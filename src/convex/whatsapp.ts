@@ -45,6 +45,24 @@ export interface Composed {
   invoiceId?: Id<"invoices">;
 }
 
+/**
+ * Outcome of composing a message.
+ *
+ * A record that simply *cannot* be messaged yet — no phone on file, auction
+ * notice not issued, wrong id — is a normal state the UI has to render, not an
+ * error. Throwing here would propagate out of `useQuery` during render and blank
+ * the whole page, so those cases come back as `{ ok: false, reason }` and the
+ * button disables itself with the reason as its tooltip.
+ *
+ * Genuine authorisation failures still throw: they mean the session itself is
+ * wrong, not that one row is un-messagable.
+ */
+export type ComposeResult =
+  | ({ ok: true } & Composed)
+  | { ok: false; reason: string };
+
+const cannot = (reason: string): ComposeResult => ({ ok: false, reason });
+
 /** Builds the message text from the ledger — no network, safe to preview. */
 export const compose = query({
   args: {
@@ -52,7 +70,7 @@ export const compose = query({
     invoiceId: v.optional(v.id("invoices")),
     loanId: v.optional(v.id("girviLoans")),
   },
-  handler: async (ctx, args): Promise<Composed> => {
+  handler: async (ctx, args): Promise<ComposeResult> => {
     // Scoped per message kind: an invoice reminder only needs counter access,
     // while an interest or auction notice is Girvi-only. Requiring "reports"
     // here would break the button for sales staff and Girvi operators alike.
@@ -62,14 +80,21 @@ export const compose = query({
     );
 
     if (args.kind === "INVOICE") {
-      if (!args.invoiceId) throw new ConvexError("Pick an invoice to send.");
+      if (!args.invoiceId) return cannot("Pick an invoice to send.");
       const inv = await ctx.db.get(args.invoiceId);
-      if (!inv || inv.tenantId !== tenant._id) throw new ConvexError("Invoice not found.");
+      if (!inv || inv.tenantId !== tenant._id) return cannot("Invoice not found.");
 
       const customer = inv.customerId ? await ctx.db.get(inv.customerId) : null;
-      if (!customer?.phone) throw new ConvexError("No phone number on this invoice.");
+      if (!customer?.phone) {
+        return cannot(
+          customer
+            ? `${customer.name} has no phone number on file.`
+            : "This invoice has no customer with a phone number.",
+        );
+      }
 
       return {
+        ok: true,
         to: customer.phone,
         invoiceId: inv._id,
         customerId: customer._id,
@@ -85,12 +110,18 @@ export const compose = query({
       };
     }
 
-    if (!args.loanId) throw new ConvexError("Pick a pledge to send about.");
+    if (!args.loanId) return cannot("Pick a pledge to send about.");
     const loan = await ctx.db.get(args.loanId);
-    if (!loan || loan.tenantId !== tenant._id) throw new ConvexError("Loan not found.");
+    if (!loan || loan.tenantId !== tenant._id) return cannot("Pledge not found.");
 
     const customer = await ctx.db.get(loan.customerId);
-    if (!customer?.phone) throw new ConvexError("No phone number on this pledge.");
+    if (!customer?.phone) {
+      return cannot(
+        customer
+          ? `${customer.name} has no phone number on file.`
+          : "This pledge has no borrower with a phone number.",
+      );
+    }
 
     const due = computeInterest({
       pledgedAmount: loan.pledgedAmount,
@@ -105,11 +136,12 @@ export const compose = query({
 
     if (args.kind === "AUCTION_NOTICE") {
       if ((loan.escalationStage ?? 0) < 2) {
-        throw new ConvexError(
+        return cannot(
           "Issue the formal notice in the Girvi ledger before sending an auction notice.",
         );
       }
       return {
+        ok: true,
         to: customer.phone,
         loanId: loan._id,
         customerId: customer._id,
@@ -126,6 +158,7 @@ export const compose = query({
     }
 
     return {
+      ok: true,
       to: customer.phone,
       loanId: loan._id,
       customerId: customer._id,
