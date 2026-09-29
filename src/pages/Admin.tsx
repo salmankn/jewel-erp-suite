@@ -1,16 +1,15 @@
 import { api } from "@/convex/_generated/api";
 import { useAuth } from "@/hooks/use-auth";
-import { EmptyState, Money, Panel, Pill, Stat } from "@/components/app/ui";
+import { AuditTrail } from "@/components/app/AuditTrail";
+import { EmptyState, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import {
-  formatDate,
   formatINR,
   METAL_LABELS,
   PURITY_LABELS,
 } from "@/lib/gehnacloud";
 import { useMutation, useQuery } from "convex/react";
 import {
-  Activity,
   Boxes,
   Gem,
   KeyRound,
@@ -21,7 +20,6 @@ import {
   Server,
   ShieldAlert,
   TrendingUp,
-  Users,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -340,47 +338,7 @@ export default function Admin() {
               )}
             </Panel>
 
-            {/* audit */}
-            <Panel
-              title="Platform audit log"
-              description="Append-only. Financial and stock writes are never silently editable."
-              action={
-                <Pill tone="neutral">
-                  <Activity className="size-3" />
-                  {data.logs.length} entries
-                </Pill>
-              }
-            >
-              {data.logs.length === 0 ? (
-                <EmptyState icon={Activity} title="No activity recorded yet" />
-              ) : (
-                <ul className="divide-y divide-border/70">
-                  {data.logs.map((l) => (
-                    <li
-                      key={l._id}
-                      className="flex flex-wrap items-baseline gap-x-3 gap-y-1 px-5 py-2.5"
-                    >
-                      <span className="font-mono text-[10px] text-muted-foreground">
-                        {formatDate(l.at)}
-                      </span>
-                      <Pill
-                        tone={
-                          l.action.includes("SUSPEND") || l.action.includes("CHUDAI")
-                            ? "warn"
-                            : "neutral"
-                        }
-                      >
-                        {l.action.replace(/_/g, " ")}
-                      </Pill>
-                      <span className="text-[13px]">{l.detail}</span>
-                      <span className="ml-auto text-[11px] text-muted-foreground">
-                        {l.actor}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </Panel>
+            <AuditTrail tenants={data.tenants} />
           </>
         )}
       </main>

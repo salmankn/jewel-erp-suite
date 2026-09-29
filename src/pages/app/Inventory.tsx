@@ -13,6 +13,7 @@ import {
   PURITY_LABELS,
 } from "@/lib/gehnacloud";
 import { useMutation, useQuery } from "convex/react";
+import type { Id } from "@/convex/_generated/dataModel";
 import {
   Boxes,
   Loader2,
@@ -36,6 +37,17 @@ const STATUS_TONE: Record<string, "safe" | "warn" | "info" | "neutral"> = {
   AUDITED: "info",
 };
 
+/** Statuses a counter can set by hand, in the order they normally happen. */
+const SETTABLE_STATUSES = ["IN_STOCK", "SOLD", "PLEDGED_GIRVI", "AUDITED"] as const;
+type SettableStatus = (typeof SETTABLE_STATUSES)[number];
+
+const STATUS_LABELS: Record<SettableStatus, string> = {
+  IN_STOCK: "In stock",
+  SOLD: "Sold",
+  PLEDGED_GIRVI: "Pledged",
+  AUDITED: "Audited",
+};
+
 export default function Inventory() {
   const { role, tenant } = useWorkspace();
   const [search, setSearch] = useState("");
@@ -45,11 +57,33 @@ export default function Inventory() {
   const [showAdd, setShowAdd] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
   const [tagFor, setTagFor] = useState<string[] | null>(null);
+  const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
   const canAdd = role === "STORE_OWNER" || role === "ACCOUNTANT";
+  const canRestock = role === "STORE_OWNER" || role === "ACCOUNTANT" || role === "GIRVI_OPERATOR";
   const data = useQuery(api.inventory.list, { search, status, category });
   const addItem = useMutation(api.inventory.add);
   const rapidAudit = useMutation(api.inventory.rapidAudit);
+  const changeStatus = useMutation(api.inventory.setStatus);
+
+  /** Applies a status to one piece, or to every selected piece. */
+  const applyStatus = async (ids: string[], next: SettableStatus) => {
+    setPendingStatus(next);
+    try {
+      for (const itemId of ids) {
+        await changeStatus({ itemId: itemId as Id<"inventoryItems">, status: next });
+      }
+      toast.success(
+        ids.length === 1
+          ? `Marked ${STATUS_LABELS[next].toLowerCase()}.`
+          : `${ids.length} pieces marked ${STATUS_LABELS[next].toLowerCase()}.`,
+      );
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update status");
+    } finally {
+      setPendingStatus(null);
+    }
+  };
 
   return (
     <div className="space-y-5">
@@ -167,12 +201,26 @@ export default function Inventory() {
               Clear
             </Button>
 
-            <Input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search name, barcode, HUID…"
-              className="h-8 w-44 text-xs"
-            />
+            {canRestock && selected.size > 0 && (
+              <select
+                className="h-8 rounded-md border border-input bg-background px-2 text-xs disabled:opacity-50"
+                value={pendingStatus ?? ""}
+                disabled={pendingStatus !== null}
+                onChange={(e) => {
+                  const next = e.target.value as SettableStatus | "";
+                  if (!next) return;
+                  void applyStatus([...selected], next);
+                }}
+              >
+                <option value="">Mark {selected.size} as…</option>
+                {SETTABLE_STATUSES.map((s) => (
+                  <option key={s} value={s}>
+                    {STATUS_LABELS[s]}
+                  </option>
+                ))}
+              </select>
+            )}
+
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -282,9 +330,27 @@ export default function Inventory() {
                       <Money value={it.purchaseRate} />
                     </td>
                     <td className="px-5 py-3">
-                      <Pill tone={STATUS_TONE[it.status] ?? "neutral"}>
-                        {it.status.replace(/_/g, " ")}
-                      </Pill>
+                      {canRestock ? (
+                        <select
+                          className="h-7 rounded-md border border-input bg-background px-1.5 text-[11px] capitalize disabled:opacity-50"
+                          value={it.status}
+                          disabled={pendingStatus !== null}
+                          onChange={(e) =>
+                            void applyStatus([it._id], e.target.value as SettableStatus)
+                          }
+                          aria-label={`Status for ${it.itemName}`}
+                        >
+                          {SETTABLE_STATUSES.map((s) => (
+                            <option key={s} value={s}>
+                              {STATUS_LABELS[s]}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Pill tone={STATUS_TONE[it.status] ?? "neutral"}>
+                          {it.status.replace(/_/g, " ")}
+                        </Pill>
+                      )}
                     </td>
                   </tr>
                 ))}

@@ -1,10 +1,10 @@
 import { api } from "@/convex/_generated/api";
 import { EscalatePanel } from "@/components/app/EscalatePanel";
 import { KycPanel } from "@/components/app/KycPanel";
+import { LoanDetailPanel } from "@/components/app/LoanDetailPanel";
 import { WhatsAppSend } from "@/components/app/WhatsAppSend";
 import { EmptyState, Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   computeLtv,
   formatDate,
@@ -16,9 +16,9 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
+  FileText,
   Gavel,
   Loader2,
-  MessageCircle,
   Plus,
   Scale,
   ShieldAlert,
@@ -29,13 +29,6 @@ import {
 import { useState } from "react";
 import { toast } from "sonner";
 
-const STATUS_TONE: Record<string, "safe" | "warn" | "crit" | "neutral" | "info"> = {
-  ACTIVE: "safe",
-  OVERDUE: "warn",
-  AUCTIONED: "crit",
-  CLOSED: "neutral",
-};
-
 const PURITIES = [24, 22, 18, 925, 950];
 const METALS = ["GOLD", "SILVER", "PLATINUM"] as const;
 
@@ -45,6 +38,7 @@ export default function Girvi() {
   const [paying, setPaying] = useState<Id<"girviLoans"> | null>(null);
   const [kycFor, setKycFor] = useState<Id<"girviLoans"> | null>(null);
   const [escalating, setEscalating] = useState<Id<"girviLoans"> | null>(null);
+  const [detailFor, setDetailFor] = useState<Id<"girviLoans"> | null>(null);
 
   const data = useQuery(api.girvi.list, { status });
   const customers = useQuery(api.customers.list, {});
@@ -149,6 +143,21 @@ export default function Girvi() {
         <KycPanel loanId={kycFor} customerId={data.loans.find((l) => l._id === kycFor)?.customerId} />
       )}
 
+      {detailFor && (
+        <LoanDetailPanel
+          loanId={detailFor}
+          onClose={() => setDetailFor(null)}
+          onCollect={() => {
+            setPaying(detailFor);
+            setDetailFor(null);
+          }}
+          onEscalate={() => {
+            setEscalating(detailFor);
+            setDetailFor(null);
+          }}
+        />
+      )}
+
       {escalating && data && (
         <EscalatePanel
           loan={data.loans.find((l) => l._id === escalating)!}
@@ -196,7 +205,11 @@ export default function Girvi() {
               </thead>
               <tbody className="divide-y divide-border/70">
                 {data.loans.map((l) => (
-                  <tr key={l._id} className="transition-colors hover:bg-muted/40">
+                  <tr
+                    key={l._id}
+                    onClick={() => setDetailFor(l._id)}
+                    className="cursor-pointer transition-colors hover:bg-muted/40"
+                  >
                     <td className="px-5 py-3">
                       <p className="font-mono text-xs font-medium">{l.loanNumber}</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -270,6 +283,14 @@ export default function Girvi() {
                     </td>
                     <td className="px-5 py-3 text-right">
                       <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDetailFor(l._id)}
+                          title="Open full ledger"
+                        >
+                          <FileText className="size-3.5" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
