@@ -74,6 +74,8 @@ export const list = query({
           interest,
           ltv: ltvFor(loan, ratePerGram),
           ageDays: Math.max(0, Math.floor((now - loan.loanDate) / DAY)),
+          /** Suggested next rung on the escalation ladder, if any. */
+          suggestedStage: loan.escalationStage ?? 0,
         };
       })
       .sort((a, b) => b.interest.amountDue - a.interest.amountDue);
@@ -100,6 +102,9 @@ export const list = query({
         atRisk: open.filter((l) => l.ltv.breached).length,
         critical: open.filter((l) => l.ltv.severity === "CRITICAL").length,
         overdue: open.filter((l) => l.status === "OVERDUE").length,
+        auctioned: enriched.filter((l) => l.status === "AUCTIONED").length,
+        /** Loans already carrying a formal notice or marked for auction. */
+        escalated: open.filter((l) => (l.escalationStage ?? 0) >= 2).length,
         closed: enriched.filter((l) => l.status === "CLOSED").length,
       },
     };
@@ -332,6 +337,92 @@ export const captureKyc = mutation({
 });
 
 /** Loan Transfer — move a pledge to another customer (gifting a pledged coin). */
+/**
+ * Overdue escalation.
+ *
+ * Stage 0 none → 1 reminder → 2 formal notice → 3 auction. The ladder only
+ * ever moves forward, and stage 3 writes the notice number that the auction
+ * letter and the WhatsApp dispatch both quote.
+ */
+export const escalate = mutation({
+  args: {
+    loanId: v.id("girviLoans"),
+    /** Stop at this stage rather than advancing one step. */
+    toStage: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { tenant, user } = await requireTenant(ctx, "girvi");
+    const loan = await ctx.db.get(args.loanId);
+    if (!loan || loan.tenantId !== tenant._id) throw new ConvexError("Loan not found.");
+    if (loan.status === "CLOSED") throw new ConvexError("This loan is settled.");
+
+    const current = loan.escalationStage ?? 0;
+    const next = Math.min(3, args.toStage ?? current + 1);
+
+    if (next <= current) {
+      throw new ConvexError(`Already at stage ${current}.`);
+    }
+
+    const noticeNumber =
+      next >= 2
+        ? `ANC-${new Date().getFullYear()}-${loan.loanNumber.split("-").pop()}`
+        : undefined;
+
+    const status =
+      next >= 3 ? "AUCTIONED" : loan.status === "AUCTIONED" ? "OVERDUE" : "OVERDUE";
+
+    await ctx.db.patch(args.loanId, {
+      escalationStage: next,
+      status,
+      auctionNoticeNumber: noticeNumber ?? loan.auctionNoticeNumber,
+      auctionNoticedAt: next >= 2 ? Date.now() : loan.auctionNoticedAt,
+    });
+
+    await audit(ctx, {
+      tenantId: tenant._id,
+      actor: actorLabel(user),
+      action: `ESCALATION_STAGE_${next}`,
+      entity: "girviLoans",
+      detail: `${loan.loanNumber} escalated to stage ${next}${noticeNumber ? ` — notice ${noticeNumber}` : ""}.`,
+    });
+
+    return { stage: next, noticeNumber, status };
+  },
+});
+
+/** Write off the pledge and free the collateral into the stock book. */
+export const releaseToStock = mutation({
+  args: { loanId: v.id("girviLoans"), note: v.optional(v.string()) },
+  handler: async (ctx, args) => {
+    const { tenant, user } = await requireTenant(ctx, "girvi");
+    const loan = await ctx.db.get(args.loanId);
+    if (!loan || loan.tenantId !== tenant._id) throw new ConvexError("Loan not found.");
+    if (loan.status === "CLOSED") throw new ConvexError("Already settled.");
+
+    const customer = await ctx.db.get(loan.customerId);
+    await ctx.db.patch(args.loanId, { status: "CLOSED", principalPaid: loan.pledgedAmount });
+    await ctx.db.insert("girviPayments", {
+      tenantId: tenant._id,
+      loanId: args.loanId,
+      kind: "SETTLEMENT",
+      amount: 0,
+      mode: "CASH",
+      note: args.note ?? "Auctioned — collateral written off and returned to stock.",
+      nocNumber: `AUC-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      at: Date.now(),
+    });
+
+    await audit(ctx, {
+      tenantId: tenant._id,
+      actor: actorLabel(user),
+      action: "GIRVI_WRITEOFF",
+      entity: "girviLoans",
+      detail: `${loan.loanNumber} written off against ${customer?.name ?? "customer"}.`,
+    });
+    return true;
+  },
+});
+
 export const transfer = mutation({
   args: {
     loanId: v.id("girviLoans"),

@@ -102,6 +102,7 @@ export const createInvoice = mutation({
   args: {
     customerId: v.optional(v.id("customers")),
     customerName: v.string(),
+    gstin: v.optional(v.string()),
     interState: v.optional(v.boolean()),
     lines: v.array(lineValidator),
     splits: v.array(v.object({ mode: v.string(), amount: v.number() })),
@@ -117,6 +118,17 @@ export const createInvoice = mutation({
       const hit = rates.find((r) => r.purityKarat === purity && r.metalType !== "PLATINUM");
       return hit?.ratePerGram ?? 0;
     };
+
+    // Purchase rates drive gross margin on the P&L, so carry cost onto the line.
+    const stockItems = (
+      await Promise.all(
+        args.lines
+          .map((l) => l.itemId)
+          .filter((id): id is NonNullable<typeof id> => !!id)
+          .map((id) => ctx.db.get(id)),
+      )
+    ).filter((i) => i && i.tenantId === tenant._id);
+    const costById = new Map(stockItems.map((i) => [i!._id, i!.purchaseRate]));
 
     const pricedLines = args.lines.map((line) => {
       // Hallmark compliance: refuse a jewellery line with no HUID.
@@ -151,6 +163,9 @@ export const createInvoice = mutation({
         stoneValue: line.stoneValue,
         discount: priced.discount,
         amount: priced.amount,
+        costValue: line.itemId
+          ? Math.round(line.netWeight * (costById.get(line.itemId) ?? 0) * 100) / 100
+          : 0,
       };
     });
 
@@ -172,6 +187,7 @@ export const createInvoice = mutation({
       invoiceNumber,
       customerId: args.customerId,
       customerName: args.customerName.trim(),
+      gstin: args.gstin?.trim().toUpperCase() || undefined,
       lines: pricedLines,
       taxableValue: gst.taxableValue,
       cgst: gst.cgst,

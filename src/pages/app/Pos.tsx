@@ -37,6 +37,16 @@ const PURITIES = [
 
 const MODES = ["CASH", "UPI", "CARD", "BANK", "OLD_GOLD"];
 
+const GEMSTONES = [
+  "DIAMOND",
+  "RUBY",
+  "EMERALD",
+  "SAPPHIRE",
+  "PEARL",
+  "AMETHYST",
+  "TANZANITE",
+] as const;
+
 interface DraftLine {
   key: string;
   itemId?: Id<"inventoryItems">;
@@ -50,6 +60,9 @@ interface DraftLine {
   makingChargePerGram: number;
   stoneValue: number;
   discountPct: number;
+  gemstoneType?: string;
+  gemstoneCarat?: number;
+  gemstoneRatePerCarat?: number;
 }
 
 function blankLine(): DraftLine {
@@ -77,6 +90,7 @@ export default function Pos() {
 
   const [customerId, setCustomerId] = useState<Id<"customers"> | "">("");
   const [customerName, setCustomerName] = useState("");
+  const [gstin, setGstin] = useState("");
   const [interState, setInterState] = useState(false);
   const [lines, setLines] = useState<DraftLine[]>([blankLine()]);
   const [splits, setSplits] = useState([{ mode: "CASH", amount: 0 }]);
@@ -144,12 +158,16 @@ export default function Pos() {
     setSplits([{ mode: "CASH", amount: 0 }]);
     setCustomerId("");
     setCustomerName("");
+    setGstin("");
   };
 
   const submit = async () => {
     const usable = priced.filter((p) => p.line.itemName && p.line.grossWeight > 0);
     if (usable.length === 0) return toast.error("Add at least one item to bill.");
     if (!customerName.trim()) return toast.error("Enter the customer's name.");
+    if (gstin.trim() && !/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]{2}$/.test(gstin.trim())) {
+      return toast.error("That GSTIN does not look valid — 15 characters.");
+    }
     if (!splitCheck.ok) return toast.error(splitCheck.message ?? "Check the settlement.");
 
     setSubmitting(true);
@@ -157,6 +175,7 @@ export default function Pos() {
       const result = await createInvoice({
         customerId: customerId || undefined,
         customerName: customerName.trim(),
+        gstin: gstin.trim() || undefined,
         interState,
         lines: usable.map((p) => ({
           itemId: p.line.itemId,
@@ -302,14 +321,75 @@ export default function Pos() {
                       </label>
                     ))}
 
-                    <div className="block">
-                      <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Net weight
-                      </span>
-                      <p className="nums mt-1 h-9 rounded-md bg-muted px-2.5 py-1.5 text-sm font-semibold text-primary">
-                        {netWeight.toFixed(3)} g
-                      </p>
-                    </div>
+                  <div className="block">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Net weight
+                    </span>
+                    <p className="nums mt-1 h-9 rounded-md bg-muted px-2.5 py-1.5 text-sm font-semibold text-primary">
+                      {netWeight.toFixed(3)} g
+                    </p>
+                  </div>
+
+                  <label className="block">
+                    <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Stone
+                    </span>
+                    <select
+                      className={`${numberField} mt-1 block w-32`}
+                      value={line.gemstoneType ?? ""}
+                      onChange={(e) =>
+                        update(line.key, {
+                          gemstoneType: e.target.value || undefined,
+                        })
+                      }
+                    >
+                      <option value="">None</option>
+                      {GEMSTONES.map((g) => (
+                        <option key={g} value={g}>
+                          {g}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+
+                  {line.gemstoneType && (
+                    <>
+                      <label className="block">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Carat
+                        </span>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className={`${numberField} mt-1 block w-20`}
+                          value={line.gemstoneCarat ?? ""}
+                          onChange={(e) =>
+                            update(line.key, {
+                              gemstoneCarat: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          ₹/carat
+                        </span>
+                        <input
+                          type="number"
+                          step="100"
+                          min="0"
+                          className={`${numberField} mt-1 block w-28`}
+                          value={line.gemstoneRatePerCarat ?? ""}
+                          onChange={(e) =>
+                            update(line.key, {
+                              gemstoneRatePerCarat: Number(e.target.value) || 0,
+                            })
+                          }
+                        />
+                      </label>
+                    </>
+                  )}
 
                     <label className="block">
                       <span className="text-[10px] uppercase tracking-wider text-muted-foreground">
@@ -392,7 +472,11 @@ export default function Pos() {
                   const id = e.target.value as Id<"customers"> | "";
                   setCustomerId(id);
                   const c = customers?.customers.find((x) => x._id === id);
-                  if (c) setCustomerName(c.name);
+                  if (c) {
+                    setCustomerName(c.name);
+                    // Carry the customer's GSTIN so the GSTR-1 row is valid.
+                    setGstin(c.gstin ?? "");
+                  }
                 }}
               >
                 <option value="">Walk-in customer</option>
@@ -407,6 +491,13 @@ export default function Pos() {
                 onChange={(e) => setCustomerName(e.target.value)}
                 placeholder="Customer name"
                 className="h-9 text-sm"
+              />
+              <Input
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                placeholder="GSTIN (optional, for B2B)"
+                maxLength={15}
+                className="h-9 font-mono text-sm"
               />
               <label className="flex cursor-pointer items-center gap-2 text-xs text-muted-foreground">
                 <input

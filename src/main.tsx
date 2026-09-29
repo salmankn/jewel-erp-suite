@@ -18,6 +18,9 @@ const RequireModule = lazy(() =>
 );
 const Overview = lazy(() => import("./pages/app/Overview.tsx"));
 const Pos = lazy(() => import("./pages/app/Pos.tsx"));
+const Purchases = lazy(() => import("./pages/app/Purchases.tsx"));
+const Reports = lazy(() => import("./pages/app/Reports.tsx"));
+const Team = lazy(() => import("./pages/app/Team.tsx"));
 const Inventory = lazy(() => import("./pages/app/Inventory.tsx"));
 const Girvi = lazy(() => import("./pages/app/Girvi.tsx"));
 const Karigar = lazy(() => import("./pages/app/Karigar.tsx"));
@@ -152,6 +155,30 @@ createRoot(document.getElementById("root")!).render(
                   element={
                     <RequireModule module="pos">
                       <Pos />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="purchases"
+                  element={
+                    <RequireModule module="purchases">
+                      <Purchases />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="reports"
+                  element={
+                    <RequireModule module="reports">
+                      <Reports />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="team"
+                  element={
+                    <RequireModule module="reports">
+                      <Team />
                     </RequireModule>
                   }
                 />

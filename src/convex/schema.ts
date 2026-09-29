@@ -90,6 +90,8 @@ const schema = defineSchema(
       state: v.optional(v.string()),
       gstin: v.optional(v.string()),
       trialEndsAt: v.optional(v.number()),
+      /** When the current paid period lapses and the licence needs renewing. */
+      renewsAt: v.optional(v.number()),
       createdAt: v.number(),
     })
       .index("subdomain", ["subdomain"])
@@ -152,12 +154,18 @@ const schema = defineSchema(
       email: v.optional(v.string()),
       aadhaarLast4: v.optional(v.string()),
       pan: v.optional(v.string()),
+      /** B2B customers — required for a valid GSTR-1 outward supply row. */
+      gstin: v.optional(v.string()),
       kycStatus: v.string(), // PENDING | VERIFIED | FAILED
       kycVerifiedAt: v.optional(v.number()),
       /** Kitty passbook */
       kittyActive: v.boolean(),
       kittyMonthlyGrams: v.number(),
       kittyPaidMonths: v.number(),
+      /** Target months for the scheme to mature; drives redemption eligibility. */
+      kittyMaturityMonths: v.optional(v.number()),
+      /** Grams already redeemed out of the passbook. */
+      kittyRedeemedGrams: v.optional(v.number()),
       totalPurchased: v.number(),
       createdAt: v.number(),
     })
@@ -178,6 +186,12 @@ const schema = defineSchema(
       grossWeight: v.number(),
       netWeight: v.number(),
       stoneWeight: v.number(),
+      /** Gemstones tracked as first-class stock, not just a weight line. */
+      gemstoneType: v.optional(v.string()), // DIAMOND | RUBY | EMERALD | SAPPHIRE | PEARL | AMETHYST
+      gemstoneCarat: v.optional(v.number()),
+      gemstoneClarity: v.optional(v.string()), // IF | VVS1 | VVS2 | VS | SI1 | SI2 | I
+      gemstoneRatePerCarat: v.optional(v.number()),
+      gemstoneCount: v.optional(v.number()),
       makingChargePerGram: v.number(),
       status: v.string(), // IN_STOCK | SOLD | PLEDGED_GIRVI | AUDITED
       purchaseRate: v.number(),
@@ -213,6 +227,10 @@ const schema = defineSchema(
       status: v.string(), // ACTIVE | CLOSED | AUCTIONED | OVERDUE
       kycStatus: v.string(), // PENDING | VERIFIED
       signatureCaptured: v.boolean(),
+      /** Overdue escalation ladder: 0 none, 1 reminder, 2 notice, 3 auction. */
+      escalationStage: v.optional(v.number()),
+      auctionNoticeNumber: v.optional(v.string()),
+      auctionNoticedAt: v.optional(v.number()),
       createdAt: v.number(),
     })
       .index("by_tenant", ["tenantId"])
@@ -266,12 +284,87 @@ const schema = defineSchema(
       .index("by_tenant", ["tenantId"])
       .index("by_karigar", ["karigarId"]),
 
+    /** Module 3 — URD (unregistered dealer) purchases and inward GST. */
+    purchases: defineTable({
+      tenantId: v.id("tenants"),
+      purchaseNumber: v.string(),
+      supplierName: v.string(),
+      supplierGstin: v.optional(v.string()),
+      /** An URD purchase attracts 3% but earns no input tax credit. */
+      isUrd: v.boolean(),
+      /** Counterfoil / bill number — mandatory evidence for a URD purchase. */
+      billNumber: v.optional(v.string()),
+      metalType: metalValidator,
+      purityKarat: purityValidator,
+      grossWeight: v.number(),
+      netWeight: v.number(),
+      taxableValue: v.number(),
+      cgst: v.number(),
+      sgst: v.number(),
+      igst: v.number(),
+      total: v.number(),
+      /** Input tax credit actually claimable — always 0 for a URD. */
+      itcClaimable: v.number(),
+      mode: v.string(), // CASH | UPI | BANK
+      createdAt: v.number(),
+    })
+      .index("by_tenant", ["tenantId"])
+      .index("by_tenant_created", ["tenantId", "createdAt"]),
+
+    /** Module 1 — KYC evidence: Aadhaar/PAN scans, pledge photos, signatures. */
+    kycDocuments: defineTable({
+      tenantId: v.id("tenants"),
+      customerId: v.optional(v.id("customers")),
+      loanId: v.optional(v.id("girviLoans")),
+      kind: v.string(), // AADHAAR_FRONT | AADHAAR_BACK | PAN | PLEDGE_PHOTO | SIGNATURE
+      /** Convex storage id for real file uploads. */
+      storageId: v.optional(v.string()),
+      /** Inline PNG drawn on the signature pad, stored as a data URL. */
+      dataUrl: v.optional(v.string()),
+      note: v.optional(v.string()),
+      verified: v.boolean(),
+      uploadedAt: v.number(),
+    })
+      .index("by_tenant", ["tenantId"])
+      .index("by_loan", ["loanId"])
+      .index("by_customer", ["customerId"]),
+
+    /** Module 5 — Kitty redemptions once a passbook matures. */
+    kittyRedemptions: defineTable({
+      tenantId: v.id("tenants"),
+      customerId: v.id("customers"),
+      grams: v.number(),
+      value: v.number(),
+      /** Invoice raised against the redemption, if it was settled from stock. */
+      invoiceId: v.optional(v.id("invoices")),
+      note: v.optional(v.string()),
+      at: v.number(),
+    }).index("by_tenant", ["tenantId"]).index("by_customer", ["customerId"]),
+
+    /** Module 5 — outbound WhatsApp Business dispatch log. */
+    whatsappMessages: defineTable({
+      tenantId: v.id("tenants"),
+      customerId: v.optional(v.id("customers")),
+      loanId: v.optional(v.id("girviLoans")),
+      invoiceId: v.optional(v.id("invoices")),
+      to: v.string(),
+      kind: v.string(), // INVOICE | RECEIPT | INTEREST_DUE | AUCTION_NOTICE
+      body: v.string(),
+      status: v.string(), // SENT | FAILED | SKIPPED
+      error: v.optional(v.string()),
+      sentAt: v.number(),
+    })
+      .index("by_tenant", ["tenantId"])
+      .index("by_tenant_sent", ["tenantId", "sentAt"]),
+
     /** Module 3 — POS invoices with GST + HUID compliance. */
     invoices: defineTable({
       tenantId: v.id("tenants"),
       invoiceNumber: v.string(),
       customerId: v.optional(v.id("customers")),
       customerName: v.string(),
+      /** Recipient GSTIN — carried into the GSTR-1 CSV for B2B supplies. */
+      gstin: v.optional(v.string()),
       /** Denormalised line items — each keeps its HUID for the audit trail. */
       lines: v.array(
         v.object({
@@ -285,6 +378,8 @@ const schema = defineSchema(
           stoneValue: v.number(),
           discount: v.number(),
           amount: v.number(),
+          /** Cost of goods at purchase rate, so gross profit is real. */
+          costValue: v.number(),
         }),
       ),
       taxableValue: v.number(),

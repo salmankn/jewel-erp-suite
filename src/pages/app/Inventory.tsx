@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/app/AppShell";
+import { TagPrint } from "@/components/app/TagPrint";
 import { EmptyState, Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,6 +19,7 @@ import {
   Plus,
   QrCode,
   ScanLine,
+  Tag as TagIcon,
   X,
 } from "lucide-react";
 import { useState } from "react";
@@ -35,12 +37,14 @@ const STATUS_TONE: Record<string, "safe" | "warn" | "info" | "neutral"> = {
 };
 
 export default function Inventory() {
-  const { role } = useWorkspace();
+  const { role, tenant } = useWorkspace();
   const [search, setSearch] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
   const [status, setStatus] = useState("ALL");
   const [category, setCategory] = useState("ALL");
   const [showAdd, setShowAdd] = useState(false);
   const [showAudit, setShowAudit] = useState(false);
+  const [tagFor, setTagFor] = useState<string[] | null>(null);
 
   const canAdd = role === "STORE_OWNER" || role === "ACCOUNTANT";
   const data = useQuery(api.inventory.list, { search, status, category });
@@ -116,10 +120,9 @@ export default function Inventory() {
         />
       )}
 
-      {showAdd && canAdd && (
-        <AddItemPanel
-          onClose={() => setShowAdd(false)}
-          onSubmit={async (args) => {
+      {showAdd && canAdd && (          <AddItemPanel
+            data={data}
+            onClose={() => setShowAdd(false)}            onSubmit={async (args) => {
             try {
               await addItem(args);
               toast.success("Added to stock with a fresh HUID and RFID tag.");
@@ -131,10 +134,45 @@ export default function Inventory() {
         />
       )}
 
+      {tagFor && (
+        <Panel>
+          <TagPrint
+            items={data?.items.filter((i) => tagFor.includes(i._id)) ?? []}
+            businessName={tenant.businessName}
+            gstin={tenant.gstin}
+            onClose={() => setTagFor(null)}
+          />
+        </Panel>
+      )}
+
       <Panel
         title="Stock book"
         action={
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={selected.size === 0}
+              onClick={() => setTagFor([...selected])}
+            >
+              <TagIcon className="size-3.5" />
+              Print tags ({selected.size})
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={selected.size === 0}
+              onClick={() => setSelected(new Set())}
+            >
+              Clear
+            </Button>
+
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Search name, barcode, HUID…"
+              className="h-8 w-44 text-xs"
+            />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -178,6 +216,7 @@ export default function Inventory() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border/70 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
+                  <th className="w-9 px-3 py-2.5" />
                   <th className="px-5 py-2.5 font-medium">Piece</th>
                   <th className="px-5 py-2.5 font-medium">HUID / RFID</th>
                   <th className="px-5 py-2.5 font-medium">Metal</th>
@@ -191,12 +230,32 @@ export default function Inventory() {
               <tbody className="divide-y divide-border/70">
                 {data.items.map((it) => (
                   <tr key={it._id} className="transition-colors hover:bg-muted/40">
+                    <td className="px-3 py-3">
+                      <input
+                        type="checkbox"
+                        className="accent-primary"
+                        checked={selected.has(it._id)}
+                        onChange={(e) => {
+                          const next = new Set(selected);
+                          if (e.target.checked) next.add(it._id);
+                          else next.delete(it._id);
+                          setSelected(next);
+                        }}
+                        aria-label={`Select ${it.itemName}`}
+                      />
+                    </td>
                     <td className="px-5 py-3">
                       <p className="font-medium">{it.itemName}</p>
                       <p className="text-[11px] text-muted-foreground">
                         {CATEGORY_LABELS[it.category] ?? it.category} ·{" "}
                         <span className="font-mono">{it.barcode}</span>
                       </p>
+                      {it.gemstoneType && (
+                        <p className="text-[11px] text-primary">
+                          {it.gemstoneCarat}ct {it.gemstoneType}
+                          {it.gemstoneClarity ? ` · ${it.gemstoneClarity}` : ""}
+                        </p>
+                      )}
                     </td>
                     <td className="px-5 py-3">
                       <p className="font-mono text-xs">{it.huidNumber}</p>
@@ -239,9 +298,11 @@ export default function Inventory() {
 }
 
 function AddItemPanel({
+  data,
   onClose,
   onSubmit,
 }: {
+  data: { categories: string[]; gemstones: readonly string[]; clarities: readonly string[] } | undefined;
   onClose: () => void;
   onSubmit: (args: {
     itemName: string;
@@ -253,6 +314,10 @@ function AddItemPanel({
     enamelWeight: number;
     makingChargePerGram: number;
     purchaseRate: number;
+    gemstoneType?: string;
+    gemstoneCarat?: number;
+    gemstoneClarity?: string;
+    gemstoneRatePerCarat?: number;
   }) => Promise<void>;
 }) {
   const [busy, setBusy] = useState(false);
@@ -266,6 +331,10 @@ function AddItemPanel({
     enamelWeight: 0,
     makingChargePerGram: 0,
     purchaseRate: 0,
+    gemstoneType: "" as string,
+    gemstoneCarat: 0,
+    gemstoneClarity: "" as string,
+    gemstoneRatePerCarat: 0,
   });
 
   const { netWeight } = computeNetWeight(form);
@@ -369,6 +438,63 @@ function AddItemPanel({
             {netWeight.toFixed(3)} g
           </p>
         </div>
+
+        <label className="block">
+          <span className={label}>Gemstone</span>
+          <select
+            className={`${field} mt-1`}
+            value={form.gemstoneType}
+            onChange={(e) => setForm({ ...form, gemstoneType: e.target.value })}
+          >
+            <option value="">None</option>
+            {(data?.gemstones ?? []).map((g) => (
+              <option key={g} value={g}>
+                {g}
+              </option>
+            ))}
+          </select>
+        </label>
+        {form.gemstoneType && (
+          <>
+            <label className="block">
+              <span className={label}>Carat</span>
+              <input
+                type="number" step="0.01" min="0"
+                className={`${field} mt-1`}
+                value={form.gemstoneCarat}
+                onChange={(e) =>
+                  setForm({ ...form, gemstoneCarat: Number(e.target.value) || 0 })
+                }
+              />
+            </label>
+            <label className="block">
+              <span className={label}>Clarity</span>
+              <select
+                className={`${field} mt-1`}
+                value={form.gemstoneClarity}
+                onChange={(e) => setForm({ ...form, gemstoneClarity: e.target.value })}
+              >
+                <option value="">—</option>
+                {(data?.clarities ?? []).map((c) => (
+                  <option key={c} value={c}>
+                    {c}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="block">
+              <span className={label}>₹/carat</span>
+              <input
+                type="number" step="100" min="0"
+                className={`${field} mt-1`}
+                value={form.gemstoneRatePerCarat}
+                onChange={(e) =>
+                  setForm({ ...form, gemstoneRatePerCarat: Number(e.target.value) || 0 })
+                }
+              />
+            </label>
+          </>
+        )}
       </div>
 
       <div className="flex justify-end gap-2 border-t border-border/70 px-5 py-3">

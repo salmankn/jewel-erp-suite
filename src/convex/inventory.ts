@@ -15,7 +15,23 @@ const CATEGORIES = [
   "COIN",
   "SET",
   "EARRING",
+  "DIAMOND_STUD",
+  "GEMSTONE_RING",
+  "GEMSTONE_PENDANT",
 ];
+
+/** Gemstones tracked as first-class stock alongside the metal. */
+export const GEMSTONES = [
+  "DIAMOND",
+  "RUBY",
+  "EMERALD",
+  "SAPPHIRE",
+  "PEARL",
+  "AMETHYST",
+  "TANZANITE",
+] as const;
+
+export const CLARITIES = ["IF", "VVS1", "VVS2", "VS", "SI1", "SI2", "I"] as const;
 
 /** Module 2 — Smart Inventory. Staff may read stock; only owners add to it. */
 export const list = query({
@@ -54,6 +70,8 @@ export const list = query({
     return {
       items: filtered.sort((a, b) => b.addedAt - a.addedAt),
       categories: CATEGORIES,
+      gemstones: GEMSTONES,
+      clarities: CLARITIES,
       summary: {
         total: items.length,
         inStock: byStatus.IN_STOCK ?? 0,
@@ -89,6 +107,11 @@ export const add = mutation({
     stoneWeight: v.optional(v.number()),
     enamelWeight: v.optional(v.number()),
     makingChargePerGram: v.optional(v.number()),
+    gemstoneType: v.optional(v.string()),
+    gemstoneCarat: v.optional(v.number()),
+    gemstoneClarity: v.optional(v.string()),
+    gemstoneRatePerCarat: v.optional(v.number()),
+    gemstoneCount: v.optional(v.number()),
     purchaseRate: v.number(),
   },
   handler: async (ctx, args) => {
@@ -127,6 +150,11 @@ export const add = mutation({
       grossWeight: args.grossWeight,
       netWeight,
       stoneWeight: args.stoneWeight ?? 0,
+      gemstoneType: args.gemstoneType,
+      gemstoneCarat: args.gemstoneCarat,
+      gemstoneClarity: args.gemstoneClarity,
+      gemstoneRatePerCarat: args.gemstoneRatePerCarat,
+      gemstoneCount: args.gemstoneCount,
       makingChargePerGram: args.makingChargePerGram ?? 0,
       status: "IN_STOCK",
       purchaseRate: args.purchaseRate,

@@ -14,6 +14,9 @@ import {
   Receipt,
   Scale,
   Shield,
+  ShoppingCart,
+  TrendingUp,
+  UserCog,
   Users,
   Wrench,
 } from "lucide-react";
@@ -71,10 +74,13 @@ export function RequireModule({
 const NAV = [
   { to: "/app", label: "Overview", icon: LayoutDashboard, module: "dashboard", end: true },
   { to: "/app/pos", label: "Billing & GST", icon: Receipt, module: "pos", end: false },
+  { to: "/app/purchases", label: "Purchases", icon: ShoppingCart, module: "purchases", end: false },
   { to: "/app/inventory", label: "Inventory", icon: Boxes, module: "inventory", end: false },
   { to: "/app/girvi", label: "GehnaGirvi", icon: Scale, module: "girvi", end: false },
   { to: "/app/karigar", label: "Karigar", icon: Wrench, module: "karigar", end: false },
   { to: "/app/customers", label: "Customers", icon: Users, module: "customers", end: false },
+  { to: "/app/reports", label: "Reports", icon: TrendingUp, module: "reports", end: false },
+  { to: "/app/team", label: "Team & plan", icon: UserCog, module: "reports", end: false },
 ] as const;
 
 export function AppShell() {

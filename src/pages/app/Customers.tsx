@@ -23,6 +23,8 @@ export default function Customers() {
   const addCustomer = useMutation(api.customers.add);
   const kittyPayment = useMutation(api.customers.addKittyPayment);
   const verifyKyc = useMutation(api.customers.verifyKyc);
+  const redeemKitty = useMutation(api.customers.redeemKitty);
+  const setGstin = useMutation(api.customers.setGstin);
 
   return (
     <div className="space-y-5">
@@ -49,8 +51,13 @@ export default function Customers() {
           <Stat
             label="Kitty members"
             value={data.summary.kittyMembers}
-            sub={`${formatGrams(data.summary.kittyGramsOutstanding)} of gold committed`}
+            sub={`${data.summary.maturedCount} matured · ${formatGrams(data.summary.kittyGramsOutstanding)} outstanding`}
             icon={Wallet}
+          />
+          <Stat
+            label="B2B customers"
+            value={data.summary.b2bCustomers}
+            sub="GSTIN on file for GSTR-1"
           />
           <Stat
             label="KYC pending"
@@ -105,6 +112,7 @@ export default function Customers() {
               <thead>
                 <tr className="border-b border-border/70 text-left text-[11px] uppercase tracking-wider text-muted-foreground">
                   <th className="px-5 py-2.5 font-medium">Customer</th>
+                  <th className="px-5 py-2.5 font-medium">GSTIN</th>
                   <th className="px-5 py-2.5 font-medium">KYC</th>
                   <th className="px-5 py-2.5 text-right font-medium">Kitty</th>
                   <th className="px-5 py-2.5 text-right font-medium">Months</th>
@@ -124,6 +132,48 @@ export default function Customers() {
                       </p>
                     </td>
                     <td className="px-5 py-3">
+                      {c.gstin ? (
+                        <button
+                          type="button"
+                          className="font-mono text-[11px] text-primary underline-offset-2 hover:underline"
+                          onClick={async () => {
+                            try {
+                              await setGstin({ customerId: c._id });
+                              toast.success("GSTIN cleared.");
+                            } catch (e) {
+                              toast.error(
+                                e instanceof Error ? e.message : "Could not clear",
+                              );
+                            }
+                          }}
+                          title="Click to clear"
+                        >
+                          {c.gstin}
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="text-[11px] text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+                          onClick={async () => {
+                            const gstin = window.prompt(
+                              "GSTIN for B2B billing (15 characters)",
+                            );
+                            if (!gstin) return;
+                            try {
+                              await setGstin({ customerId: c._id, gstin });
+                              toast.success("GSTIN saved — GSTR-1 rows will carry it.");
+                            } catch (e) {
+                              toast.error(
+                                e instanceof Error ? e.message : "Invalid GSTIN",
+                              );
+                            }
+                          }}
+                        >
+                          + Add GSTIN
+                        </button>
+                      )}
+                    </td>
+                    <td className="px-5 py-3">
                       {c.kycStatus === "VERIFIED" ? (
                         <Pill tone="safe">
                           <BadgeCheck className="size-3" />
@@ -139,7 +189,22 @@ export default function Customers() {
                       {c.kittyActive ? `${c.kittyMonthlyGrams} g/mo` : "—"}
                     </td>
                     <td className="nums px-5 py-3 text-right text-xs">
-                      {c.kittyActive ? c.kittyPaidMonths : "—"}
+                      {c.kittyActive ? (
+                        <>
+                          {c.kittyPaidMonths}/{c.maturityMonths}
+                          {c.matured ? (
+                            <span className="block text-[11px] text-emerald-600 dark:text-emerald-400">
+                              matured
+                            </span>
+                          ) : (
+                            <span className="block text-[11px] text-muted-foreground">
+                              {c.monthsToMaturity} mo left
+                            </span>
+                          )}
+                        </>
+                      ) : (
+                        "—"
+                      )}
                     </td>
                     <td className="px-5 py-3 text-right text-xs">
                       {c.kittyActive ? (
@@ -184,13 +249,9 @@ export default function Customers() {
                               try {
                                 const n = await kittyPayment({
                                   customerId: c._id,
-                                  amount: Math.round(
-                                    c.kittyMonthlyGrams * 90520,
-                                  ),
+                                  amount: Math.round(c.kittyMonthlyGrams * 90520),
                                 });
-                                toast.success(
-                                  `Installment ${n} recorded for ${c.name}.`,
-                                );
+                                toast.success(`Installment ${n} recorded for ${c.name}.`);
                               } catch (e) {
                                 toast.error(
                                   e instanceof Error ? e.message : "Could not record",
@@ -199,6 +260,30 @@ export default function Customers() {
                             }}
                           >
                             + Installment
+                          </Button>
+                        )}
+                        {c.matured && (
+                          <Button
+                            size="sm"
+                            onClick={async () => {
+                              try {
+                                const res = await redeemKitty({
+                                  customerId: c._id,
+                                });
+                                toast.success(
+                                  `Redeemed ${res.grams}g worth ${formatINR(res.value)}` +
+                                    (res.remaining > 0
+                                      ? ` · ${res.remaining}g still on the passbook`
+                                      : " · passbook fully settled"),
+                                );
+                              } catch (e) {
+                                toast.error(
+                                  e instanceof Error ? e.message : "Could not redeem",
+                                );
+                              }
+                            }}
+                          >
+                            Redeem
                           </Button>
                         )}
                       </div>

@@ -1,4 +1,7 @@
 import { api } from "@/convex/_generated/api";
+import { EscalatePanel } from "@/components/app/EscalatePanel";
+import { KycPanel } from "@/components/app/KycPanel";
+import { WhatsAppSend } from "@/components/app/WhatsAppSend";
 import { EmptyState, Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +16,9 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
+  Gavel,
   Loader2,
+  MessageCircle,
   Plus,
   Scale,
   ShieldAlert,
@@ -38,6 +43,8 @@ export default function Girvi() {
   const [status, setStatus] = useState("ALL");
   const [showJama, setShowJama] = useState(false);
   const [paying, setPaying] = useState<Id<"girviLoans"> | null>(null);
+  const [kycFor, setKycFor] = useState<Id<"girviLoans"> | null>(null);
+  const [escalating, setEscalating] = useState<Id<"girviLoans"> | null>(null);
 
   const data = useQuery(api.girvi.list, { status });
   const customers = useQuery(api.customers.list, {});
@@ -138,6 +145,18 @@ export default function Girvi() {
         />
       )}
 
+      {kycFor && data && (
+        <KycPanel loanId={kycFor} customerId={data.loans.find((l) => l._id === kycFor)?.customerId} />
+      )}
+
+      {escalating && data && (
+        <EscalatePanel
+          loan={data.loans.find((l) => l._id === escalating)!}
+          onClose={() => setEscalating(null)}
+          onDone={() => setEscalating(null)}
+        />
+      )}
+
       <Panel
         title="Pledge ledger"
         action={
@@ -224,7 +243,23 @@ export default function Girvi() {
                       </Pill>
                     </td>
                     <td className="px-5 py-3">
-                      {l.kycStatus === "VERIFIED" && l.signatureCaptured ? (
+                      {l.escalationStage != null && l.escalationStage > 0 ? (
+                        <Pill
+                          tone={
+                            l.escalationStage >= 3
+                              ? "crit"
+                              : l.escalationStage === 2
+                                ? "warn"
+                                : "info"
+                          }
+                        >
+                          {l.escalationStage >= 3
+                            ? "Auctioned"
+                            : l.escalationStage === 2
+                              ? "Noticed"
+                              : "Reminded"}
+                        </Pill>
+                      ) : l.kycStatus === "VERIFIED" && l.signatureCaptured ? (
                         <Pill tone="safe">Complete</Pill>
                       ) : (
                         <Pill tone="warn">
@@ -234,13 +269,37 @@ export default function Girvi() {
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      {l.status !== "CLOSED" ? (
-                        <Button size="sm" variant="outline" onClick={() => setPaying(l._id)}>
-                          Collect
+                      <div className="flex justify-end gap-1.5">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setKycFor(l._id)}
+                          title="KYC documents & signature"
+                        >
+                          <Signature className="size-3.5" />
                         </Button>
-                      ) : (
-                        <Pill tone="neutral">Released</Pill>
-                      )}
+                        <WhatsAppSend
+                          kind="INTEREST_DUE"
+                          loanId={l._id}
+                          disabled={l.status === "CLOSED"}
+                        />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setEscalating(l._id)}
+                          title="Escalate / auction notice"
+                          disabled={l.status === "CLOSED"}
+                        >
+                          <Gavel className="size-3.5" />
+                        </Button>
+                        {l.status !== "CLOSED" ? (
+                          <Button size="sm" variant="outline" onClick={() => setPaying(l._id)}>
+                            Collect
+                          </Button>
+                        ) : (
+                          <Pill tone="neutral">Released</Pill>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}

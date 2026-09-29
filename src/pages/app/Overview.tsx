@@ -1,5 +1,6 @@
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/app/AppShell";
+import { WhatsAppSend } from "@/components/app/WhatsAppSend";
 import { EmptyState, Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import {
@@ -268,6 +269,7 @@ export default function Overview() {
                     <th className="px-5 py-2.5 font-medium">Customer</th>
                     <th className="px-5 py-2.5 font-medium">Date</th>
                     <th className="px-5 py-2.5 font-medium">Settlement</th>
+                    <th className="w-10 px-3 py-2.5" />
                     {invoices.showMoney && (
                       <th className="px-5 py-2.5 text-right font-medium">GST</th>
                     )}
@@ -294,6 +296,9 @@ export default function Overview() {
                       )}
                       <td className="px-5 py-3 text-right font-semibold">
                         <Money value={inv.grandTotal} />
+                      </td>
+                      <td className="px-3 py-3 text-right">
+                        <WhatsAppSend kind="INVOICE" invoiceId={inv._id} />
                       </td>
                     </tr>
                   ))}
