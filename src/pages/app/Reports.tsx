@@ -10,7 +10,6 @@ import {
   BarChart3,
   Landmark,
   Receipt,
-  Scale,
   TrendingUp,
   Wrench,
 } from "lucide-react";
@@ -46,6 +45,7 @@ export default function Reports() {
           {/* ── P&L headline ── */}
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <Stat
+              index={0}
               label="Revenue (taxable)"
               value={formatINR(pl.headline.revenue)}
               sub={`${pl.headline.invoiceCount} invoices`}
@@ -53,18 +53,21 @@ export default function Reports() {
               tone="gold"
             />
             <Stat
+              index={1}
               label="Gross profit"
               value={formatINR(pl.headline.grossProfit)}
               sub={`${pl.headline.grossMarginPct}% margin`}
               icon={BarChart3}
             />
             <Stat
+              index={2}
               label="Karigar labour"
               value={formatINR(pl.headline.labour)}
               sub="Expensed on received jobs"
               icon={Wrench}
             />
             <Stat
+              index={3}
               label="Net profit"
               value={formatINR(pl.headline.netProfit)}
               sub={`${pl.headline.netMarginPct}% net margin`}

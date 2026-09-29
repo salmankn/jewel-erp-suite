@@ -177,7 +177,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route
                   path="team"
                   element={
-                    <RequireModule module="reports">
+                    <RequireModule module="team">
                       <Team />
                     </RequireModule>
                   }

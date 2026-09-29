@@ -113,6 +113,7 @@ export default function Inventory() {
       {data && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
+            index={0}
             label="Pieces tracked"
             value={data.summary.total}
             sub={`${data.summary.inStock} on shelf · ${data.summary.sold} sold`}
@@ -120,17 +121,20 @@ export default function Inventory() {
             tone="gold"
           />
           <Stat
+            index={1}
             label="Net weight on hand"
             value={formatGrams(data.summary.netWeight)}
             sub="Excludes sold and pledged"
           />
           <Stat
+            index={2}
             label="Pledged to Girvi"
             value={data.summary.pledged}
             sub="Held as collateral"
             tone={data.summary.pledged > 0 ? "warn" : "neutral"}
           />
           <Stat
+            index={3}
             label="Stock value"
             value={formatINR(data.summary.stockValue)}
             sub="At purchase rate"

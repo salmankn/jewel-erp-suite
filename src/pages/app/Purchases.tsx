@@ -70,6 +70,7 @@ export default function Purchases() {
       {data && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
+            index={0}
             label="Total spend"
             value={formatINR(data.summary.totalSpend)}
             sub={`${data.summary.count} purchases`}
@@ -77,18 +78,21 @@ export default function Purchases() {
             tone="gold"
           />
           <Stat
+            index={1}
             label="URD spend"
             value={formatINR(data.summary.urdSpend)}
             sub={`${data.summary.urdCount} unregistered dealers`}
             tone={data.summary.urdCount > 0 ? "warn" : "neutral"}
           />
           <Stat
+            index={2}
             label="ITC recoverable"
             value={formatINR(data.summary.itcClaimable)}
             sub="Claim against output GST"
             icon={TrendingDown}
           />
           <Stat
+            index={3}
             label="Metal received"
             value={formatGrams(data.summary.metalReceived)}
             sub="Net of stones"

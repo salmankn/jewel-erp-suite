@@ -112,6 +112,7 @@ export default function Overview() {
         {showPos && invoices && (
           <>
             <Stat
+              index={0}
               label="Billed to date"
               value={formatINR(invoices.summary.revenue)}
               sub={`${invoices.summary.count} invoices`}
@@ -119,6 +120,7 @@ export default function Overview() {
               tone="gold"
             />
             <Stat
+              index={1}
               label="GST collected"
               value={formatINR(invoices.summary.gstCollected)}
               sub="CGST + SGST + IGST"
@@ -128,6 +130,7 @@ export default function Overview() {
         )}
         {showInventory && inventory && (
           <Stat
+            index={1}
             label="Stock weight"
             value={formatGrams(inventory.summary.netWeight)}
             sub={`${inventory.summary.inStock} pieces on the shelf`}
@@ -136,6 +139,7 @@ export default function Overview() {
         )}
         {showGirvi && girvi && (
           <Stat
+            index={2}
             label="Girvi outstanding"
             value={formatINR(girvi.summary.outstanding)}
             sub={`${girvi.summary.activeCount} open pledges · ${formatGrams(girvi.summary.collateralWeight)} held`}
@@ -145,6 +149,7 @@ export default function Overview() {
         )}
         {showKarigar && karigar && (
           <Stat
+            index={2}
             label="Metal with Karigars"
             value={formatGrams(karigar.summary.metalInHand)}
             sub={`${karigar.summary.openJobs} open job cards`}
@@ -153,6 +158,7 @@ export default function Overview() {
         )}
         {customers && (
           <Stat
+            index={3}
             label="Customers"
             value={customers.summary.total}
             sub={`${customers.summary.kittyMembers} on Kitty schemes`}

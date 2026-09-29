@@ -3,7 +3,13 @@ import { Panel, Pill } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { SignaturePad } from "@/components/app/SignaturePad";
 import { useMutation, useQuery } from "convex/react";
-import { CheckCircle2, FileUp, Loader2, PenLine, ShieldCheck } from "lucide-react";
+import {
+  CheckCircle2,
+  FileUp,
+  Loader2,
+  PenLine,
+  ShieldCheck,
+} from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -31,7 +37,9 @@ export function KycPanel({
 }) {
   const uploadUrl = useMutation(api.kyc.generateUploadUrl);
   const saveDocument = useMutation(api.kyc.saveDocument);
+  const verifyDoc = useMutation(api.kyc.verify);
   const [busy, setBusy] = useState<string | null>(null);
+  const [checking, setChecking] = useState<string | null>(null);
 
   const loanData = useQuery(
     api.kyc.forLoan,
@@ -73,6 +81,19 @@ export function KycPanel({
       toast.error(e instanceof Error ? e.message : "Upload failed");
     } finally {
       setBusy(null);
+    }
+  };
+
+  /** Ticking a document marks it as sighted; unticking sends it back. */
+  const toggleVerify = async (documentId: Id<"kycDocuments">, next: boolean) => {
+    setChecking(documentId);
+    try {
+      await verifyDoc({ documentId, verified: next });
+      toast.success(next ? "Document marked verified." : "Verification cleared.");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Could not update document");
+    } finally {
+      setChecking(null);
     }
   };
 
@@ -135,7 +156,7 @@ export function KycPanel({
         {documents.length > 0 && (
           <div>
             <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
-              On file
+              On file — verify each against the original
             </p>
             <ul className="grid gap-2 sm:grid-cols-2">
               {documents.map((d) => (
@@ -162,8 +183,29 @@ export function KycPanel({
                       {new Date(d.uploadedAt).toLocaleDateString("en-IN")}
                     </p>
                   </div>
-                  {d.verified && (
-                    <CheckCircle2 className="size-4 text-emerald-500" />
+                  {checking === d._id ? (
+                    <Loader2 className="size-4 animate-spin text-muted-foreground" />
+                  ) : d.verified ? (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-emerald-600 dark:text-emerald-400"
+                      onClick={() => toggleVerify(d._id, false)}
+                      title="Clear verification"
+                    >
+                      <CheckCircle2 className="size-4" />
+                      Verified
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => toggleVerify(d._id, true)}
+                      title="Mark this document as sighted and genuine"
+                    >
+                      <ShieldCheck className="size-3.5" />
+                      Verify
+                    </Button>
                   )}
                 </li>
               ))}

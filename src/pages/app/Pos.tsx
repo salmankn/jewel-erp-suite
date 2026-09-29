@@ -1,6 +1,5 @@
 import { api } from "@/convex/_generated/api";
-import { useWorkspace } from "@/components/app/AppShell";
-import { EmptyState, Money, PageHeader, Panel, Pill } from "@/components/app/ui";
+import { EmptyState, PageHeader, Panel, Pill } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -81,7 +80,6 @@ function blankLine(): DraftLine {
 }
 
 export default function Pos() {
-  const { role } = useWorkspace();
   const rates = useQuery(api.rates.board);
   const inventory = useQuery(api.inventory.list, { status: "IN_STOCK" });
   const customers = useQuery(api.customers.list, {});

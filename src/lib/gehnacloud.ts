@@ -405,6 +405,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "customers",
     "purchases",
     "reports",
+    "team",
   ],
   // Costs, profit margins, GST reports and Girvi books are all hidden.
   SALES_STAFF: ["dashboard", "pos", "inventory", "customers"],
@@ -419,6 +420,7 @@ export const ROLE_PERMISSIONS: Record<Role, string[]> = {
     "customers",
     "purchases",
     "reports",
+    "team",
   ],
 };
 

@@ -80,11 +80,11 @@ const NAV = [
   { to: "/app/karigar", label: "Karigar", icon: Wrench, module: "karigar", end: false },
   { to: "/app/customers", label: "Customers", icon: Users, module: "customers", end: false },
   { to: "/app/reports", label: "Reports", icon: TrendingUp, module: "reports", end: false },
-  { to: "/app/team", label: "Team & plan", icon: UserCog, module: "reports", end: false },
+  { to: "/app/team", label: "Team & plan", icon: UserCog, module: "team", end: false },
 ] as const;
 
 export function AppShell() {
-  const { user, signOut } = useAuth();
+  const { signOut } = useAuth();
   const navigate = useNavigate();
   const context = useQuery(api.bootstrap.context);
   const ensureWorkspace = useMutation(api.bootstrap.ensureWorkspace);

@@ -2,7 +2,7 @@ import { api } from "@/convex/_generated/api";
 import { EmptyState, Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { formatDate, formatGrams, formatINR } from "@/lib/gehnacloud";
+import { formatGrams, formatINR } from "@/lib/gehnacloud";
 import { useMutation, useQuery } from "convex/react";
 import {
   BadgeCheck,
@@ -42,6 +42,7 @@ export default function Customers() {
       {data && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
+            index={0}
             label="Customers"
             value={data.summary.total}
             sub={`${data.summary.avgOrder ? formatINR(data.summary.avgOrder) : "—"} average lifetime`}
@@ -49,17 +50,20 @@ export default function Customers() {
             tone="gold"
           />
           <Stat
+            index={1}
             label="Kitty members"
             value={data.summary.kittyMembers}
             sub={`${data.summary.maturedCount} matured · ${formatGrams(data.summary.kittyGramsOutstanding)} outstanding`}
             icon={Wallet}
           />
           <Stat
+            index={2}
             label="B2B customers"
             value={data.summary.b2bCustomers}
             sub="GSTIN on file for GSTR-1"
           />
           <Stat
+            index={3}
             label="KYC pending"
             value={data.summary.kycPending}
             sub="Aadhaar OTP or PAN needed"
@@ -67,6 +71,7 @@ export default function Customers() {
             icon={ShieldQuestion}
           />
           <Stat
+            index={4}
             label="Lifetime value"
             value={formatINR(data.summary.lifetimeValue)}
             sub="Across all bills"

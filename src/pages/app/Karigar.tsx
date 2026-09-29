@@ -50,6 +50,7 @@ export default function Karigar() {
       {data && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
+            index={0}
             label="Karigars"
             value={data.summary.karigarCount}
             sub={`${data.summary.openJobs} open job cards`}
@@ -57,17 +58,20 @@ export default function Karigar() {
             tone="gold"
           />
           <Stat
+            index={1}
             label="Metal out with them"
             value={formatGrams(data.summary.metalOut)}
             sub="Issued and not yet returned"
             icon={Scale}
           />
           <Stat
+            index={2}
             label="Ghat balance"
             value={formatGrams(data.summary.metalInHand)}
             sub="Pure metal in their custody"
           />
           <Stat
+            index={3}
             label="Labour payable"
             value={formatINR(data.summary.labourPayable)}
             sub={

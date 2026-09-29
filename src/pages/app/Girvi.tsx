@@ -1,7 +1,9 @@
 import { api } from "@/convex/_generated/api";
 import { EscalatePanel } from "@/components/app/EscalatePanel";
 import { KycPanel } from "@/components/app/KycPanel";
+import { OutboxPanel } from "@/components/app/OutboxPanel";
 import { LoanDetailPanel } from "@/components/app/LoanDetailPanel";
+import { TransferPanel } from "@/components/app/TransferPanel";
 import { WhatsAppSend } from "@/components/app/WhatsAppSend";
 import { EmptyState, Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
@@ -16,9 +18,11 @@ import {
 import { useMutation, useQuery } from "convex/react";
 import type { Id } from "@/convex/_generated/dataModel";
 import {
+  ArrowRightLeft,
   FileText,
   Gavel,
   Loader2,
+  MessageCircle,
   Plus,
   Scale,
   ShieldAlert,
@@ -39,6 +43,8 @@ export default function Girvi() {
   const [kycFor, setKycFor] = useState<Id<"girviLoans"> | null>(null);
   const [escalating, setEscalating] = useState<Id<"girviLoans"> | null>(null);
   const [detailFor, setDetailFor] = useState<Id<"girviLoans"> | null>(null);
+  const [transferFor, setTransferFor] = useState<Id<"girviLoans"> | null>(null);
+  const [showOutbox, setShowOutbox] = useState(false);
 
   const data = useQuery(api.girvi.list, { status });
   const customers = useQuery(api.customers.list, {});
@@ -52,16 +58,27 @@ export default function Girvi() {
         title="GehnaGirvi"
         description="Pledge, accrue and settle. Interest and LTV are recomputed against the live board on every render."
         action={
-          <Button size="sm" onClick={() => setShowJama((s) => !s)}>
-            <Plus className="size-4" />
-            New Jama
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowOutbox((s) => !s)}
+            >
+              <MessageCircle className="size-4" />
+              Outbox
+            </Button>
+            <Button size="sm" onClick={() => setShowJama((s) => !s)}>
+              <Plus className="size-4" />
+              New Jama
+            </Button>
+          </div>
         }
       />
 
       {data && (
         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           <Stat
+            index={0}
             label="Capital on the street"
             value={formatINR(data.summary.disbursed)}
             sub={`${data.summary.activeCount} open pledges`}
@@ -69,16 +86,19 @@ export default function Girvi() {
             tone="gold"
           />
           <Stat
+            index={1}
             label="Total due today"
             value={formatINR(data.summary.outstanding)}
             sub="Principal plus accrued interest"
           />
           <Stat
+            index={2}
             label="Interest outstanding"
             value={formatINR(data.summary.interestDueThisMonth)}
             sub={`${data.summary.overdue} overdue · ${data.summary.closed} settled`}
           />
           <Stat
+            index={3}
             label="Collateral held"
             value={formatGrams(data.summary.collateralWeight)}
             sub={`${data.summary.atRisk} above 75% LTV · ${data.summary.critical} critical`}
@@ -143,6 +163,15 @@ export default function Girvi() {
         <KycPanel loanId={kycFor} customerId={data.loans.find((l) => l._id === kycFor)?.customerId} />
       )}
 
+      {transferFor && data && customers && (
+        <TransferPanel
+          loan={data.loans.find((l) => l._id === transferFor)!}
+          customers={customers.customers}
+          onClose={() => setTransferFor(null)}
+          onDone={() => setTransferFor(null)}
+        />
+      )}
+
       {detailFor && (
         <LoanDetailPanel
           loanId={detailFor}
@@ -165,6 +194,8 @@ export default function Girvi() {
           onDone={() => setEscalating(null)}
         />
       )}
+
+      {showOutbox && <OutboxPanel />}
 
       <Panel
         title="Pledge ledger"
@@ -304,6 +335,15 @@ export default function Girvi() {
                           loanId={l._id}
                           disabled={l.status === "CLOSED"}
                         />
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setTransferFor(l._id)}
+                          title="Transfer pledge to another borrower"
+                          disabled={l.status === "CLOSED"}
+                        >
+                          <ArrowRightLeft className="size-3.5" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="ghost"
