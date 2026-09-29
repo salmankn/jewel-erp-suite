@@ -2,6 +2,7 @@ import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { actorLabel, audit, requireTenant } from "./lib/rbac";
 import { metalValidator, purityValidator } from "./schema";
+import { assertRoom } from "./usage";
 import { computeNetWeight } from "../lib/gehnacloud";
 
 const CATEGORIES = [
@@ -121,6 +122,9 @@ export const add = mutation({
     }
     if (args.grossWeight <= 0) throw new ConvexError("Gross weight must be positive.");
     if (args.purchaseRate <= 0) throw new ConvexError("Purchase rate must be positive.");
+
+    // Plan limit: a tenant on Retail Basic cannot outgrow its 5,000 items.
+    await assertRoom(ctx, "item");
 
     const { netWeight } = computeNetWeight({
       grossWeight: args.grossWeight,

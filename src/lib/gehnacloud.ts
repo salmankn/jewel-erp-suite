@@ -396,11 +396,30 @@ export const ROLE_LABELS: Record<Role, string> = {
 /** Modules a role may open. Enforced in the UI and mirrored on the server. */
 export const ROLE_PERMISSIONS: Record<Role, string[]> = {
   SUPER_ADMIN: ["admin"],
-  STORE_OWNER: ["dashboard", "pos", "inventory", "girvi", "karigar", "customers"],
+  STORE_OWNER: [
+    "dashboard",
+    "pos",
+    "inventory",
+    "girvi",
+    "karigar",
+    "customers",
+    "purchases",
+    "reports",
+  ],
   // Costs, profit margins, GST reports and Girvi books are all hidden.
   SALES_STAFF: ["dashboard", "pos", "inventory", "customers"],
   GIRVI_OPERATOR: ["dashboard", "girvi", "customers"],
-  ACCOUNTANT: ["dashboard", "inventory", "karigar", "customers"],
+  // The accountant needs the POS for invoice and GST work, plus the purchase
+  // register and financial reports.
+  ACCOUNTANT: [
+    "dashboard",
+    "pos",
+    "inventory",
+    "karigar",
+    "customers",
+    "purchases",
+    "reports",
+  ],
 };
 
 export function canAccess(role: Role | undefined, module: string): boolean {

@@ -1,5 +1,4 @@
-import { computeNetWeight } from "../lib/gehnacloud";
-import { schemaNameFor, subdomainFor } from "../lib/gehnacloud";
+import { computeNetWeight, schemaNameFor, subdomainFor } from "../lib/gehnacloud";
 import type { MutationCtx } from "./_generated/server";
 import type { Doc, Id } from "./_generated/dataModel";
 
@@ -95,6 +94,236 @@ export const PLANS = [
   },
 ];
 
+export async function ensurePlans(ctx: MutationCtx): Promise<void> {
+  if ((await ctx.db.query("plans").collect()).length > 0) return;
+  for (const p of PLANS) await ctx.db.insert("plans", p);
+}
+
+// ─────────────────────────────── sample data ───────────────────────────────
+
+const CUSTOMER_SEED: {
+  name: string;
+  phone: string;
+  kycStatus: string;
+  aadhaarLast4?: string;
+  pan?: string;
+  gstin?: string;
+  kittyActive: boolean;
+  kittyMonthlyGrams: number;
+  kittyPaidMonths: number;
+  totalPurchased: number;
+}[] = [
+  { name: "Sunita Sharma", phone: "+91 98290 11223", kycStatus: "VERIFIED", aadhaarLast4: "4412", pan: "ABCPS4412K", kittyActive: true, kittyMonthlyGrams: 5, kittyPaidMonths: 7, totalPurchased: 412500 },
+  { name: "Mohammed Irfan", phone: "+91 94140 55678", kycStatus: "VERIFIED", aadhaarLast4: "9031", gstin: "24AAGCI5521H1ZQ", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 288000 },
+  { name: "Kamala Devi", phone: "+91 99280 33445", kycStatus: "PENDING", kittyActive: true, kittyMonthlyGrams: 3, kittyPaidMonths: 4, totalPurchased: 154000 },
+  { name: "Anil Soni", phone: "+91 90010 77889", kycStatus: "VERIFIED", aadhaarLast4: "2277", pan: "AAPSX2277L", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 96000 },
+  { name: "Rekha Agarwal", phone: "+91 98260 66554", kycStatus: "VERIFIED", aadhaarLast4: "8810", kittyActive: true, kittyMonthlyGrams: 10, kittyPaidMonths: 12, totalPurchased: 733000 },
+  { name: "Vikram Singh", phone: "+91 93140 22331", kycStatus: "PENDING", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 42000 },
+  { name: "Pooja Bhandari", phone: "+91 97110 99002", kycStatus: "VERIFIED", aadhaarLast4: "5567", kittyActive: true, kittyMonthlyGrams: 4, kittyPaidMonths: 11, totalPurchased: 205500 },
+  { name: "Gopal Lal", phone: "+91 98990 44512", kycStatus: "VERIFIED", aadhaarLast4: "1104", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 88000 },
+];
+
+const ITEM_SEED: {
+  itemName: string;
+  category: string;
+  metalType: "GOLD" | "SILVER";
+  purityKarat: 24 | 22 | 18 | 925;
+  grossWeight: number;
+  stoneWeight: number;
+  makingChargePerGram: number;
+  status: string;
+  purchaseRate: number;
+}[] = [
+  { itemName: "Kundan Polki Necklace", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 42.85, stoneWeight: 6.4, makingChargePerGram: 850, status: "IN_STOCK", purchaseRate: 86200 },
+  { itemName: "Temple Choker", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 31.2, stoneWeight: 4.1, makingChargePerGram: 1100, status: "IN_STOCK", purchaseRate: 85800 },
+  { itemName: "Diamond Ring 0.42ct", category: "RING", metalType: "GOLD", purityKarat: 18, grossWeight: 4.16, stoneWeight: 0.42, makingChargePerGram: 2400, status: "IN_STOCK", purchaseRate: 71200 },
+  { itemName: "Emerald Halo Ring", category: "GEMSTONE_RING", metalType: "GOLD", purityKarat: 18, grossWeight: 6.04, stoneWeight: 1.18, makingChargePerGram: 2100, status: "IN_STOCK", purchaseRate: 71500 },
+  { itemName: "Slim Gold Bangle", category: "BANGLE", metalType: "GOLD", purityKarat: 22, grossWeight: 18.44, stoneWeight: 0, makingChargePerGram: 620, status: "IN_STOCK", purchaseRate: 86000 },
+  { itemName: "Kada Bangle Pair", category: "BANGLE", metalType: "GOLD", purityKarat: 22, grossWeight: 62.1, stoneWeight: 0, makingChargePerGram: 700, status: "IN_STOCK", purchaseRate: 86400 },
+  { itemName: "Zircon Bangles (Set of 12)", category: "BANGLE", metalType: "GOLD", purityKarat: 18, grossWeight: 96.3, stoneWeight: 9.8, makingChargePerGram: 480, status: "IN_STOCK", purchaseRate: 70900 },
+  { itemName: "Mangalsutra 3M", category: "PENDANT", metalType: "GOLD", purityKarat: 22, grossWeight: 8.12, stoneWeight: 0.06, makingChargePerGram: 1450, status: "SOLD", purchaseRate: 86100 },
+  { itemName: "Gold Coin 10g", category: "COIN", metalType: "GOLD", purityKarat: 24, grossWeight: 10.0, stoneWeight: 0, makingChargePerGram: 350, status: "IN_STOCK", purchaseRate: 87900 },
+  { itemName: "Silver Coin 50g", category: "COIN", metalType: "SILVER", purityKarat: 925, grossWeight: 50.0, stoneWeight: 0, makingChargePerGram: 12, status: "IN_STOCK", purchaseRate: 96 },
+  { itemName: "Rani Haar Necklace", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 55.9, stoneWeight: 11.2, makingChargePerGram: 980, status: "SOLD", purchaseRate: 85900 },
+  { itemName: "Navratna Choker", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 28.75, stoneWeight: 5.9, makingChargePerGram: 1250, status: "IN_STOCK", purchaseRate: 86050 },
+  { itemName: "Rose Gold Band", category: "RING", metalType: "GOLD", purityKarat: 18, grossWeight: 3.24, stoneWeight: 0, makingChargePerGram: 1300, status: "SOLD", purchaseRate: 71300 },
+  { itemName: "Antique Chain 24in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 22.4, stoneWeight: 0, makingChargePerGram: 820, status: "IN_STOCK", purchaseRate: 86250 },
+  { itemName: "Rupi Mala 27in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 34.6, stoneWeight: 0, makingChargePerGram: 760, status: "IN_STOCK", purchaseRate: 86100 },
+  { itemName: "Silver Payal Pair", category: "BANGLE", metalType: "SILVER", purityKarat: 925, grossWeight: 148.0, stoneWeight: 0, makingChargePerGram: 18, status: "IN_STOCK", purchaseRate: 94 },
+  { itemName: "Oxidised Silver Jhumka", category: "EARRING", metalType: "SILVER", purityKarat: 925, grossWeight: 26.8, stoneWeight: 2.1, makingChargePerGram: 22, status: "SOLD", purchaseRate: 93 },
+  { itemName: "Pearl Choker", category: "NECKLACE", metalType: "GOLD", purityKarat: 18, grossWeight: 19.45, stoneWeight: 3.2, makingChargePerGram: 1050, status: "IN_STOCK", purchaseRate: 70800 },
+  { itemName: "Baby Chain 14in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 9.85, stoneWeight: 0, makingChargePerGram: 900, status: "IN_STOCK", purchaseRate: 86100 },
+  { itemName: "Bridal Lehenga Set", category: "SET", metalType: "GOLD", purityKarat: 22, grossWeight: 186.4, stoneWeight: 28.6, makingChargePerGram: 1150, status: "SOLD", purchaseRate: 86400 },
+  { itemName: "Gifter Ring", category: "RING", metalType: "GOLD", purityKarat: 22, grossWeight: 5.6, stoneWeight: 0, makingChargePerGram: 1500, status: "SOLD", purchaseRate: 86200 },
+  { itemName: "Temple Earrings", category: "EARRING", metalType: "GOLD", purityKarat: 22, grossWeight: 11.3, stoneWeight: 1.9, makingChargePerGram: 1350, status: "IN_STOCK", purchaseRate: 86000 },
+  { itemName: "Gold Chain 30in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 27.15, stoneWeight: 0, makingChargePerGram: 790, status: "PLEDGED_GIRVI", purchaseRate: 86150 },
+  { itemName: "Silver Necklace Set", category: "SET", metalType: "SILVER", purityKarat: 925, grossWeight: 92.4, stoneWeight: 4.2, makingChargePerGram: 20, status: "IN_STOCK", purchaseRate: 95 },
+];
+
+/**
+ * Inward supplies — a mix of registered dealers (recoverable GST) and
+ * unregistered old-gold counters where URD rules apply.
+ */
+const PURCHASE_SEED: {
+  supplier: string;
+  gstin?: string;
+  isUrd: boolean;
+  bill?: string;
+  gross: number;
+  value: number;
+  daysAgo: number;
+}[] = [
+  { supplier: "MMTC Bullion Depot", gstin: "08AAECM1234B1ZP", isUrd: false, gross: 412.6, value: 3684000, daysAgo: 52 },
+  { supplier: "Rajvanshi Traders", isUrd: true, bill: "RT-2291", gross: 86.4, value: 742000, daysAgo: 31 },
+  { supplier: "Hindustan Bullion Ltd", gstin: "08AAHCH5678D1ZQ", isUrd: false, gross: 205.8, value: 1842000, daysAgo: 19 },
+  { supplier: "Old Gold Counter (Moti Bazaar)", isUrd: true, bill: "OB-4417", gross: 34.2, value: 288500, daysAgo: 6 },
+];
+
+/** Outward supplies, spread over six months so the P&L chart has a shape. */
+const INVOICE_SEED: {
+  item: string;
+  customer: number | null;
+  daysAgo: number;
+  discountPct: number;
+  interState: boolean;
+  splits: { mode: string; pct: number }[];
+}[] = [
+  { item: "Mangalsutra 3M", customer: 0, daysAgo: 1, discountPct: 0, interState: false, splits: [{ mode: "UPI", pct: 1 }] },
+  { item: "Bridal Lehenga Set", customer: 4, daysAgo: 4, discountPct: 2, interState: false, splits: [{ mode: "CASH", pct: 0.4 }, { mode: "CARD", pct: 0.6 }] },
+  { item: "Rani Haar Necklace", customer: 1, daysAgo: 9, discountPct: 1, interState: true, splits: [{ mode: "BANK", pct: 1 }] },
+  { item: "Diamond Ring 0.42ct", customer: 6, daysAgo: 16, discountPct: 0, interState: false, splits: [{ mode: "UPI", pct: 1 }] },
+  { item: "Oxidised Silver Jhumka", customer: null, daysAgo: 27, discountPct: 3, interState: false, splits: [{ mode: "CASH", pct: 1 }] },
+  { item: "Gifter Ring", customer: 2, daysAgo: 41, discountPct: 1.5, interState: false, splits: [{ mode: "CASH", pct: 0.5 }, { mode: "OLD_GOLD", pct: 0.5 }] },
+  { item: "Kada Bangle Pair", customer: 3, daysAgo: 58, discountPct: 0, interState: true, splits: [{ mode: "CARD", pct: 1 }] },
+  { item: "Rose Gold Band", customer: 7, daysAgo: 74, discountPct: 2.5, interState: false, splits: [{ mode: "UPI", pct: 1 }] },
+  { item: "Pearl Choker", customer: 0, daysAgo: 92, discountPct: 1, interState: false, splits: [{ mode: "BANK", pct: 1 }] },
+];
+
+/**
+ * Sales and purchase history. Kept separate from tenant creation and made
+ * idempotent so a workspace provisioned before these tables existed gets
+ * backfilled rather than staying permanently empty.
+ */
+export async function ensureSalesHistory(
+  ctx: MutationCtx,
+  tenantId: Id<"tenants">,
+): Promise<void> {
+  const existingInvoices = await ctx.db
+    .query("invoices")
+    .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
+    .collect();
+  if (existingInvoices.length > 0) return;
+
+  const [stock, customers, rates] = await Promise.all([
+    ctx.db
+      .query("inventoryItems")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
+      .collect(),
+    ctx.db
+      .query("customers")
+      .withIndex("by_tenant", (q) => q.eq("tenantId", tenantId))
+      .collect(),
+    ctx.db.query("liveRates").collect(),
+  ]);
+
+  const stockByName = new Map(stock.map((s) => [s.itemName, s]));
+  const rateLookup = new Map(
+    rates.map((r) => [`${r.metalType}:${r.purityKarat}`, r.ratePerGram]),
+  );
+
+  for (let i = 0; i < INVOICE_SEED.length; i += 1) {
+    const s = INVOICE_SEED[i];
+    const item = stockByName.get(s.item);
+    if (!item) continue;
+    const customer = s.customer === null ? null : customers[s.customer];
+    if (s.customer !== null && !customer) continue;
+
+    const rate = rateLookup.get(`${item.metalType}:${item.purityKarat}`) ?? 0;
+    const stoneValue = Math.round(item.stoneWeight * 25000);
+    const metalValue = item.netWeight * rate;
+    const making = item.netWeight * item.makingChargePerGram;
+    const discount = ((metalValue + making) * s.discountPct) / 100;
+    const amount = Math.max(0, metalValue + making + stoneValue - discount);
+    // Cost of goods at the rate the stock was actually bought at.
+    const costValue = item.netWeight * item.purchaseRate;
+
+    const cgst = Math.round(amount * 0.015 * 100) / 100;
+    const sgst = s.interState ? 0 : cgst;
+    const igst = s.interState ? Math.round(amount * 0.03 * 100) / 100 : 0;
+    const total = Math.round((amount + cgst + sgst + igst) * 100) / 100;
+
+    let allocated = 0;
+    const splits = s.splits.map((sp, idx) => {
+      const amt =
+        idx === s.splits.length - 1
+          ? Math.round((total - allocated) * 100) / 100
+          : Math.round(total * sp.pct * 100) / 100;
+      allocated = Math.round((allocated + amt) * 100) / 100;
+      return { mode: sp.mode, amount: amt };
+    });
+
+    await ctx.db.insert("invoices", {
+      tenantId,
+      invoiceNumber: `INV-2026-${String(i + 1).padStart(5, "0")}`,
+      customerId: customer?._id,
+      customerName: customer?.name ?? "Walk-in customer",
+      gstin: customer?.gstin,
+      lines: [
+        {
+          itemName: item.itemName,
+          huidNumber: item.huidNumber,
+          description: `${item.category.replace(/_/g, " ").toLowerCase()} · HUID ${item.huidNumber}`,
+          purityKarat: item.purityKarat,
+          netWeight: item.netWeight,
+          ratePerGram: rate,
+          makingCharge: Math.round(making * 100) / 100,
+          stoneValue,
+          discount: Math.round(discount * 100) / 100,
+          amount: Math.round(amount * 100) / 100,
+          costValue: Math.round(costValue * 100) / 100,
+        },
+      ],
+      taxableValue: Math.round(amount * 100) / 100,
+      cgst,
+      sgst,
+      igst,
+      grandTotal: total,
+      splits,
+      paymentMode: splits.map((sp) => sp.mode).join(" + "),
+      createdAt: daysAgo(s.daysAgo),
+    });
+  }
+
+  for (let i = 0; i < PURCHASE_SEED.length; i += 1) {
+    const p = PURCHASE_SEED[i];
+    const tax = Math.round(p.value * 0.03 * 100) / 100;
+    const half = Math.round((tax / 2) * 100) / 100;
+    await ctx.db.insert("purchases", {
+      tenantId,
+      purchaseNumber: `PUR-2026-${String(i + 1).padStart(5, "0")}`,
+      supplierName: p.supplier,
+      supplierGstin: p.gstin,
+      isUrd: p.isUrd,
+      billNumber: p.bill,
+      metalType: "GOLD",
+      purityKarat: 22,
+      grossWeight: p.gross,
+      netWeight: p.gross,
+      taxableValue: p.value,
+      cgst: half,
+      sgst: half,
+      igst: 0,
+      total: Math.round((p.value + tax) * 100) / 100,
+      // Section 17(5): no input credit on an unregistered dealer.
+      itcClaimable: p.isUrd ? 0 : tax,
+      mode: "CASH",
+      createdAt: daysAgo(p.daysAgo),
+    });
+  }
+}
+
+// ────────────────────────────── tenant creation ──────────────────────────────
+
 /** Returns the seeded tenant, reusing it if a previous run already created it. */
 export async function ensureDemoTenant(
   ctx: MutationCtx,
@@ -103,7 +332,11 @@ export async function ensureDemoTenant(
     .query("tenants")
     .withIndex("subdomain", (q) => q.eq("subdomain", "manglam"))
     .unique();
-  if (existing) return existing;
+  if (existing) {
+    // A workspace created before sales/purchase history existed still needs it.
+    await ensureSalesHistory(ctx, existing._id);
+    return existing;
+  }
 
   const businessName = "Manglam Jewellers & Sons";
   const now = Date.now();
@@ -120,33 +353,13 @@ export async function ensureDemoTenant(
     state: "Rajasthan",
     gstin: "08AABCM1234K1Z5",
     trialEndsAt: now + 60 * DAY,
+    renewsAt: now + 365 * DAY,
     createdAt: now,
   });
 
-  // ── Customers (Module 5: CRM + Kitty savings passbooks) ──────────────────────
-  const customerSeed: {
-    name: string;
-    phone: string;
-    kycStatus: string;
-    aadhaarLast4?: string;
-    pan?: string;
-    kittyActive: boolean;
-    kittyMonthlyGrams: number;
-    kittyPaidMonths: number;
-    totalPurchased: number;
-  }[] = [
-    { name: "Sunita Sharma", phone: "+91 98290 11223", kycStatus: "VERIFIED", aadhaarLast4: "4412", pan: "ABCPS4412K", kittyActive: true, kittyMonthlyGrams: 5, kittyPaidMonths: 7, totalPurchased: 412500 },
-    { name: "Mohammed Irfan", phone: "+91 94140 55678", kycStatus: "VERIFIED", aadhaarLast4: "9031", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 288000 },
-    { name: "Kamala Devi", phone: "+91 99280 33445", kycStatus: "PENDING", kittyActive: true, kittyMonthlyGrams: 3, kittyPaidMonths: 4, totalPurchased: 154000 },
-    { name: "Anil Soni", phone: "+91 90010 77889", kycStatus: "VERIFIED", aadhaarLast4: "2277", pan: "AAPSX2277L", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 96000 },
-    { name: "Rekha Agarwal", phone: "+91 98260 66554", kycStatus: "VERIFIED", aadhaarLast4: "8810", kittyActive: true, kittyMonthlyGrams: 10, kittyPaidMonths: 11, totalPurchased: 733000 },
-    { name: "Vikram Singh", phone: "+91 93140 22331", kycStatus: "PENDING", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 42000 },
-    { name: "Pooja Bhandari", phone: "+91 97110 99002", kycStatus: "VERIFIED", aadhaarLast4: "5567", kittyActive: false, kittyMonthlyGrams: 0, kittyPaidMonths: 0, totalPurchased: 205500 },
-    { name: "Gopal Lal", phone: "+91 98990 44512", kycStatus: "VERIFIED", aadhaarLast4: "1104", kittyActive: true, kittyMonthlyGrams: 2, kittyPaidMonths: 3, totalPurchased: 88000 },
-  ];
-
+  // ── Customers (Module 5: CRM + Kitty savings passbooks) ─────────────────────
   const customerIds: Id<"customers">[] = [];
-  for (const c of customerSeed) {
+  for (const c of CUSTOMER_SEED) {
     customerIds.push(
       await ctx.db.insert("customers", {
         tenantId,
@@ -155,10 +368,13 @@ export async function ensureDemoTenant(
         kycStatus: c.kycStatus,
         aadhaarLast4: c.aadhaarLast4,
         pan: c.pan,
+        gstin: c.gstin,
         kycVerifiedAt: c.kycStatus === "VERIFIED" ? daysAgo(90) : undefined,
         kittyActive: c.kittyActive,
         kittyMonthlyGrams: c.kittyMonthlyGrams,
         kittyPaidMonths: c.kittyPaidMonths,
+        kittyMaturityMonths: 12,
+        kittyRedeemedGrams: 0,
         totalPurchased: c.totalPurchased,
         createdAt: daysAgo(400),
       }),
@@ -166,51 +382,15 @@ export async function ensureDemoTenant(
   }
 
   // ── Inventory (Module 2: HUID, RFID, gross/net weight) ───────────────────────
-  const itemSeed: {
-    itemName: string;
-    category: string;
-    metalType: "GOLD" | "SILVER";
-    purityKarat: 24 | 22 | 18 | 925;
-    grossWeight: number;
-    stoneWeight: number;
-    makingChargePerGram: number;
-    status: string;
-    purchaseRate: number;
-  }[] = [
-    { itemName: "Kundan Polki Necklace", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 42.85, stoneWeight: 6.4, makingChargePerGram: 850, status: "IN_STOCK", purchaseRate: 86200 },
-    { itemName: "Temple Choker", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 31.2, stoneWeight: 4.1, makingChargePerGram: 1100, status: "IN_STOCK", purchaseRate: 85800 },
-    { itemName: "Diamond Ring 0.42ct", category: "RING", metalType: "GOLD", purityKarat: 18, grossWeight: 4.16, stoneWeight: 0.42, makingChargePerGram: 2400, status: "IN_STOCK", purchaseRate: 71200 },
-    { itemName: "Emerald Halo Ring", category: "RING", metalType: "GOLD", purityKarat: 18, grossWeight: 6.04, stoneWeight: 1.18, makingChargePerGram: 2100, status: "IN_STOCK", purchaseRate: 71500 },
-    { itemName: "Slim Gold Bangle", category: "BANGLE", metalType: "GOLD", purityKarat: 22, grossWeight: 18.44, stoneWeight: 0, makingChargePerGram: 620, status: "IN_STOCK", purchaseRate: 86000 },
-    { itemName: "Kada Bangle Pair", category: "BANGLE", metalType: "GOLD", purityKarat: 22, grossWeight: 62.1, stoneWeight: 0, makingChargePerGram: 700, status: "IN_STOCK", purchaseRate: 86400 },
-    { itemName: "Zircon Bangles (Set of 12)", category: "BANGLE", metalType: "GOLD", purityKarat: 18, grossWeight: 96.3, stoneWeight: 9.8, makingChargePerGram: 480, status: "IN_STOCK", purchaseRate: 70900 },
-    { itemName: "Mangalsutra 3M", category: "PENDANT", metalType: "GOLD", purityKarat: 22, grossWeight: 8.12, stoneWeight: 0.06, makingChargePerGram: 1450, status: "SOLD", purchaseRate: 86100 },
-    { itemName: "Gold Coin 10g", category: "COIN", metalType: "GOLD", purityKarat: 24, grossWeight: 10.0, stoneWeight: 0, makingChargePerGram: 350, status: "IN_STOCK", purchaseRate: 87900 },
-    { itemName: "Silver Coin 50g", category: "COIN", metalType: "SILVER", purityKarat: 925, grossWeight: 50.0, stoneWeight: 0, makingChargePerGram: 12, status: "IN_STOCK", purchaseRate: 96 },
-    { itemName: "Rani Haar Necklace", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 55.9, stoneWeight: 11.2, makingChargePerGram: 980, status: "IN_STOCK", purchaseRate: 85900 },
-    { itemName: "Navratna Choker", category: "NECKLACE", metalType: "GOLD", purityKarat: 22, grossWeight: 28.75, stoneWeight: 5.9, makingChargePerGram: 1250, status: "IN_STOCK", purchaseRate: 86050 },
-    { itemName: "Rose Gold Band", category: "RING", metalType: "GOLD", purityKarat: 18, grossWeight: 3.24, stoneWeight: 0, makingChargePerGram: 1300, status: "IN_STOCK", purchaseRate: 71300 },
-    { itemName: "Antique Chain 24in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 22.4, stoneWeight: 0, makingChargePerGram: 820, status: "IN_STOCK", purchaseRate: 86250 },
-    { itemName: "Rupi Mala 27in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 34.6, stoneWeight: 0, makingChargePerGram: 760, status: "IN_STOCK", purchaseRate: 86100 },
-    { itemName: "Silver Payal Pair", category: "BANGLE", metalType: "SILVER", purityKarat: 925, grossWeight: 148.0, stoneWeight: 0, makingChargePerGram: 18, status: "IN_STOCK", purchaseRate: 94 },
-    { itemName: "Oxidised Silver Jhumka", category: "EARRING", metalType: "SILVER", purityKarat: 925, grossWeight: 26.8, stoneWeight: 2.1, makingChargePerGram: 22, status: "IN_STOCK", purchaseRate: 93 },
-    { itemName: "Pearl Choker", category: "NECKLACE", metalType: "GOLD", purityKarat: 18, grossWeight: 19.45, stoneWeight: 3.2, makingChargePerGram: 1050, status: "IN_STOCK", purchaseRate: 70800 },
-    { itemName: "Baby Chain 14in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 9.85, stoneWeight: 0, makingChargePerGram: 900, status: "IN_STOCK", purchaseRate: 86100 },
-    { itemName: "Bridal Lehenga Set", category: "SET", metalType: "GOLD", purityKarat: 22, grossWeight: 186.4, stoneWeight: 28.6, makingChargePerGram: 1150, status: "IN_STOCK", purchaseRate: 86400 },
-    { itemName: "Gifter Ring", category: "RING", metalType: "GOLD", purityKarat: 22, grossWeight: 5.6, stoneWeight: 0, makingChargePerGram: 1500, status: "SOLD", purchaseRate: 86200 },
-    { itemName: "Temple Earrings", category: "EARRING", metalType: "GOLD", purityKarat: 22, grossWeight: 11.3, stoneWeight: 1.9, makingChargePerGram: 1350, status: "IN_STOCK", purchaseRate: 86000 },
-    { itemName: "Gold Chain 30in", category: "CHAIN", metalType: "GOLD", purityKarat: 22, grossWeight: 27.15, stoneWeight: 0, makingChargePerGram: 790, status: "PLEDGED_GIRVI", purchaseRate: 86150 },
-    { itemName: "Silver Necklace Set", category: "SET", metalType: "SILVER", purityKarat: 925, grossWeight: 92.4, stoneWeight: 4.2, makingChargePerGram: 20, status: "IN_STOCK", purchaseRate: 95 },
-  ];
-
   let seq = 0;
-  for (const it of itemSeed) {
+  for (const it of ITEM_SEED) {
     seq += 1;
     const { netWeight } = computeNetWeight({
       grossWeight: it.grossWeight,
       stoneWeight: it.stoneWeight,
       enamelWeight: 0,
     });
+
     await ctx.db.insert("inventoryItems", {
       tenantId,
       itemName: it.itemName,
@@ -231,7 +411,7 @@ export async function ensureDemoTenant(
   }
 
   // ── Karigars + job cards (Module 4) ──────────────────────────────────────────
-  const karigarSeed: {
+  const KARIGAR_SEED: {
     name: string;
     phone: string;
     specialty: string;
@@ -245,7 +425,7 @@ export async function ensureDemoTenant(
   ];
 
   const karigarIds: Id<"karigars">[] = [];
-  for (const k of karigarSeed) {
+  for (const k of KARIGAR_SEED) {
     karigarIds.push(
       await ctx.db.insert("karigars", {
         tenantId,
@@ -259,7 +439,7 @@ export async function ensureDemoTenant(
     );
   }
 
-  const jobSeed: {
+  const JOB_SEED: {
     karigar: number;
     description: string;
     issuedWeight: number;
@@ -279,7 +459,7 @@ export async function ensureDemoTenant(
     { karigar: 3, description: "Bridal Lehenga Set — 186.4g gross", issuedWeight: 172.0, issuedPurity: 22, receivedWeight: 170.1, receivedPurity: 22, allowedWastagePct: 2, laborCharge: 42000, status: "RECEIVED", issuedDaysAgo: 80, receivedDaysAgo: 55 },
   ];
 
-  for (const j of jobSeed) {
+  for (const j of JOB_SEED) {
     await ctx.db.insert("karigarJobs", {
       tenantId,
       karigarId: karigarIds[j.karigar],
@@ -297,7 +477,7 @@ export async function ensureDemoTenant(
   }
 
   // ── GehnaGirvi loans (Module 1) ──────────────────────────────────────────────
-  const loanSeed: {
+  const LOAN_SEED: {
     customer: number;
     grossWeight: number;
     netWeight: number;
@@ -323,8 +503,8 @@ export async function ensureDemoTenant(
     { customer: 7, grossWeight: 27.4, netWeight: 27.1, metalType: "GOLD", purityKarat: 22, pledgedAmount: 64000, rate: 1.2, type: "SIMPLE", grace: 1, months: 1, status: "CLOSED", interestPaid: 640, principalPaid: 64000, kyc: "VERIFIED", signature: true },
   ];
 
-  for (let i = 0; i < loanSeed.length; i += 1) {
-    const l = loanSeed[i];
+  for (let i = 0; i < LOAN_SEED.length; i += 1) {
+    const l = LOAN_SEED[i];
     const loanId = await ctx.db.insert("girviLoans", {
       tenantId,
       loanNumber: `GRV-2026-${String(i + 1).padStart(4, "0")}`,
@@ -344,10 +524,10 @@ export async function ensureDemoTenant(
       status: l.status,
       kycStatus: l.kyc,
       signatureCaptured: l.signature,
+      escalationStage: l.status === "OVERDUE" ? 1 : 0,
       createdAt: monthsAgo(l.months),
     });
 
-    // A couple of historical Be-Cash entries so the ledger isn't empty.
     if (l.interestPaid > 0) {
       await ctx.db.insert("girviPayments", {
         tenantId,
@@ -373,10 +553,8 @@ export async function ensureDemoTenant(
     }
   }
 
-  return (await ctx.db.get(tenantId))!;
-}
+  // ── Sales & purchases (Module 3) ───────────────────────────────────────────
+  await ensureSalesHistory(ctx, tenantId);
 
-export async function ensurePlans(ctx: MutationCtx): Promise<void> {
-  if ((await ctx.db.query("plans").collect()).length > 0) return;
-  for (const p of PLANS) await ctx.db.insert("plans", p);
+  return (await ctx.db.get(tenantId))!;
 }

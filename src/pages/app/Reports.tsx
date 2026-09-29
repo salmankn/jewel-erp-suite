@@ -1,4 +1,6 @@
 import { api } from "@/convex/_generated/api";
+import { GstExports } from "@/components/app/GstExports";
+import { useWorkspace } from "@/components/app/AppShell";
 import { Money, PageHeader, Panel, Pill, Stat } from "@/components/app/ui";
 import { formatDate, formatINR } from "@/lib/gehnacloud";
 import { useQuery } from "convex/react";
@@ -19,6 +21,7 @@ import {
  * owner-only and the query enforces that server-side.
  */
 export default function Reports() {
+  const { role } = useWorkspace();
   const pl = useQuery(api.finance.profitAndLoss, { months: 6 });
   const bs = useQuery(
     api.finance.balanceSheet,
@@ -142,6 +145,9 @@ export default function Reports() {
               </div>
             </div>
           </Panel>
+
+          {/* ── GST returns ── */}
+          {(role === "STORE_OWNER" || role === "ACCOUNTANT") && <GstExports />}
 
           {/* ── balance sheet ── */}
           {bs ? (

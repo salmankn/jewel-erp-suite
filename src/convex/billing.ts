@@ -56,7 +56,7 @@ export const recent = query({
 export const gstReport = query({
   args: {},
   handler: async (ctx) => {
-    const { tenant, role } = await requireTenant(ctx, "pos");
+    const { tenant, role } = await requireTenant(ctx, "reports");
     if (!canSeeMoney(role)) {
       throw new ConvexError("GST reports are restricted to the Accountant and Store Owner.");
     }

@@ -2,7 +2,8 @@ import { mutation, query } from "./_generated/server";
 import { ConvexError, v } from "convex/values";
 import { actorLabel, audit, requireAuth } from "./lib/rbac";
 import { ROLES } from "./schema";
-import { ensureDemoTenant, ensurePlans, ensureRates } from "./seed";
+import { ensureDemoTenant, ensurePlans, ensureRates, ensureSalesHistory } from "./seed";
+import { assertRoom } from "./usage";
 import type { Doc, Id } from "./_generated/dataModel";
 
 export type WorkspaceContext =
@@ -78,6 +79,9 @@ export const ensureWorkspace = mutation({
     if (existing) {
       const tenant = await ctx.db.get(existing.tenantId);
       if (tenant) {
+        // Idempotent backfill for workspaces provisioned before the sales and
+        // purchase ledgers existed.
+        await ensureSalesHistory(ctx, existing.tenantId);
         return {
           tenant,
           membership: existing,
@@ -152,6 +156,9 @@ export const inviteMember = mutation({
     }
     const tenant = await ctx.db.get(membership.tenantId);
     if (!tenant) throw new ConvexError("Tenant not found.");
+
+    // Plan limit: seats are capped by the tenant's subscription tier.
+    await assertRoom(ctx, "seat");
 
     const invitee = await ctx.db
       .query("users")

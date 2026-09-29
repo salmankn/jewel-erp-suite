@@ -53,7 +53,13 @@ export const compose = query({
     loanId: v.optional(v.id("girviLoans")),
   },
   handler: async (ctx, args): Promise<Composed> => {
-    const { tenant } = await requireTenant(ctx, "reports");
+    // Scoped per message kind: an invoice reminder only needs counter access,
+    // while an interest or auction notice is Girvi-only. Requiring "reports"
+    // here would break the button for sales staff and Girvi operators alike.
+    const { tenant } = await requireTenant(
+      ctx,
+      args.kind === "INVOICE" ? "pos" : "girvi",
+    );
 
     if (args.kind === "INVOICE") {
       if (!args.invoiceId) throw new ConvexError("Pick an invoice to send.");

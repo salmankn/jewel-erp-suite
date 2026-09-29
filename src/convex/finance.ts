@@ -114,9 +114,10 @@ export const balanceSheet = query({
   args: {},
   handler: async (ctx) => {
     const { tenant, role } = await requireTenant(ctx, "reports");
-    if (role !== ROLES.STORE_OWNER) {
-      throw new ConvexError("The balance sheet is restricted to the Store Owner.");
-    }
+    // The accountant legitimately sees the P&L but not the balance sheet.
+    // Return null rather than throwing — a thrown ConvexError inside useQuery
+    // tears down the whole Reports page for that role.
+    if (role !== ROLES.STORE_OWNER) return null;
 
     const [items, loans, karigars, purchases, customers, invoices] = await Promise.all([
       ctx.db

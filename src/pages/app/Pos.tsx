@@ -1,6 +1,5 @@
 import { api } from "@/convex/_generated/api";
 import { useWorkspace } from "@/components/app/AppShell";
-import { GstExports } from "@/components/app/GstExports";
 import { EmptyState, Money, PageHeader, Panel, Pill } from "@/components/app/ui";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -622,10 +621,6 @@ export default function Pos() {
       {!lines.length && (
         <EmptyState icon={Receipt} title="Cart is empty" hint="Add a piece from stock to begin." />
       )}
-
-      {/* GSTR-1 / GSTR-3B exports — the server refuses this data for sales
-          staff, so the panel only mounts where it is actually permitted. */}
-      {(role === "STORE_OWNER" || role === "ACCOUNTANT") && <GstExports />}
     </div>
   );
 }

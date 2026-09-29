@@ -101,21 +101,9 @@ export function AppShell() {
   const value = useMemo<WorkspaceValue | null>(() => {
     if (!context || context.kind === "unlinked") return null;
     if (context.kind === "platform") {
-      return {
-        tenant: {
-          _id: "" as Doc<"tenants">["_id"],
-          _creationTime: 0,
-          businessName: "GehnaCloud Platform",
-          schemaName: "public",
-          subdomain: "admin",
-          planTier: "PLATFORM",
-          status: "ACTIVE",
-          createdAt: 0,
-        },
-        role: "SUPER_ADMIN",
-        user: context.user,
-        isSuperAdmin: true,
-      };
+      // A platform operator with no jeweller membership has no tenant schema
+      // to query — synthesising one here would make every page query throw.
+      return null;
     }
     return {
       tenant: context.tenant,
@@ -124,6 +112,41 @@ export function AppShell() {
       isSuperAdmin: context.user.role === "SUPER_ADMIN",
     };
   }, [context]);
+
+  const needsWorkspace = context?.kind === "platform";
+
+  if (needsWorkspace) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-background px-6 text-center">
+        <span className="flex size-12 items-center justify-center rounded-xl bg-primary/12 text-primary">
+          <Shield className="size-6" />
+        </span>
+        <div>
+          <h1 className="text-lg font-semibold tracking-tight">
+            No jeweller workspace linked
+          </h1>
+          <p className="mx-auto mt-2 max-w-sm text-sm text-muted-foreground">
+            You are a platform operator. Open a jeweller workspace to see the store
+            modules, or head to the Super Admin console.
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild size="sm">
+            <Link to="/admin">Go to platform console</Link>
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={async () => {
+              await ensureWorkspace();
+            }}
+          >
+            Provision my workspace
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   if (!value) {
     return (
