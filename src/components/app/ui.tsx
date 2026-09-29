@@ -89,28 +89,6 @@ export function Stat({
   );
 }
 
-/**
- * Container for a row of stat cards. The cards themselves fade in on mount, so
- * the grid nudges the whole group down slightly to read as one block arriving
- * before the panels below it.
- */
-export function StaggerGrid({
-  children,
-  className,
-  delay = 0.05,
-}: {
-  children: ReactNode;
-  className?: string;
-  delay?: number;
-}) {
-  const enter = useEnter(delay, 6);
-  return (
-    <motion.div className={className} {...enter}>
-      {children}
-    </motion.div>
-  );
-}
-
 export function Panel({
   title,
   description,

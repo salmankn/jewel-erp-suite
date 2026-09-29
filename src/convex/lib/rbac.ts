@@ -37,7 +37,7 @@ export interface TenantContext {
  */
 export async function requireTenant(
   ctx: Ctx,
-  module?: string,
+  module?: string | string[],
 ): Promise<TenantContext> {
   const user = await requireAuth(ctx);
 
@@ -55,10 +55,17 @@ export async function requireTenant(
   const tenant = await ctx.db.get(membership.tenantId);
   if (!tenant) throw new ConvexError("Tenant schema not found.");
 
-  if (module && !ROLE_PERMISSIONS[membership.role]?.includes(module)) {
-    throw new ConvexError(
-      `Your role (${membership.role}) does not have access to this module.`,
-    );
+  if (module) {
+    // A list means "any of these" — used where one capability is reachable from
+    // more than one module, e.g. the WhatsApp outbox is owned by whoever can
+    // send a message (Girvi operator or sales staff), not by "reports" alone.
+    const allowed = Array.isArray(module) ? module : [module];
+    const held = ROLE_PERMISSIONS[membership.role] ?? [];
+    if (!allowed.some((m) => held.includes(m))) {
+      throw new ConvexError(
+        `Your role (${membership.role}) does not have access to this module.`,
+      );
+    }
   }
 
   if (tenant.status === "SUSPENDED") {

@@ -61,7 +61,10 @@ export const recordDispatch = mutation({
 export const outbox = query({
   args: {},
   handler: async (ctx) => {
-    const { tenant } = await requireTenant(ctx, "reports");
+    // Readable by anyone who can dispatch a message at all (Girvi notices or
+    // counter invoices). Gating this on "reports" would throw for exactly the
+    // operators whose sends it is meant to audit.
+    const { tenant } = await requireTenant(ctx, ["girvi", "pos"]);
     const rows = await ctx.db
       .query("whatsappMessages")
       .withIndex("by_tenant_sent", (q) => q.eq("tenantId", tenant._id))

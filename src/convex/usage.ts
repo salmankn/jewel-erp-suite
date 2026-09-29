@@ -9,11 +9,15 @@ import type { Doc, Id } from "./_generated/dataModel";
  *
  * Limits are checked at the point of write, not just displayed on a dashboard,
  * so a shop on Retail Basic physically cannot outgrow its plan.
+ *
+ * Every function here is driven from the Team & plan page, so they all guard on
+ * the "team" module — the same gate the route applies in the client. Keeping the
+ * two in step means a role can never see the page but be refused its data.
  */
 export const usage = query({
   args: {},
   handler: async (ctx) => {
-    const { tenant } = await requireTenant(ctx, "reports");
+    const { tenant } = await requireTenant(ctx, "team");
 
     const plans = await ctx.db.query("plans").collect();
     const plan = plans.find((p) => p.tier === tenant.planTier);
@@ -65,7 +69,7 @@ export async function assertRoom(
   ctx: Parameters<typeof requireTenant>[0],
   kind: "item" | "seat",
 ): Promise<void> {
-  const { tenant } = await requireTenant(ctx, "reports");
+  const { tenant } = await requireTenant(ctx, "team");
 
   const plans = await ctx.db.query("plans").collect();
   const plan = plans.find((p) => p.tier === tenant.planTier);
@@ -99,7 +103,7 @@ export async function assertRoom(
 export const members = query({
   args: {},
   handler: async (ctx) => {
-    const { tenant } = await requireTenant(ctx, "reports");
+    const { tenant } = await requireTenant(ctx, "team");
     const rows = await ctx.db
       .query("memberships")
       .withIndex("by_tenant", (q) => q.eq("tenantId", tenant._id))
@@ -132,7 +136,7 @@ export const changeRole = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const { tenant, user, role } = await requireTenant(ctx, "reports");
+    const { tenant, user, role } = await requireTenant(ctx, "team");
     if (role !== ROLES.STORE_OWNER) {
       throw new ConvexError("Only the Store Owner can change roles.");
     }
@@ -160,7 +164,7 @@ export const changeRole = mutation({
 export const removeMember = mutation({
   args: { membershipId: v.id("memberships") },
   handler: async (ctx, args) => {
-    const { tenant, user, role } = await requireTenant(ctx, "reports");
+    const { tenant, user, role } = await requireTenant(ctx, "team");
     if (role !== ROLES.STORE_OWNER) {
       throw new ConvexError("Only the Store Owner can remove staff.");
     }

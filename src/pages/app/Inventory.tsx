@@ -59,8 +59,10 @@ export default function Inventory() {
   const [tagFor, setTagFor] = useState<string[] | null>(null);
   const [pendingStatus, setPendingStatus] = useState<string | null>(null);
 
+  // /app/inventory is gated on the "inventory" module, which only these two
+  // roles hold, so there is no third case to cover here.
   const canAdd = role === "STORE_OWNER" || role === "ACCOUNTANT";
-  const canRestock = role === "STORE_OWNER" || role === "ACCOUNTANT" || role === "GIRVI_OPERATOR";
+  const canRestock = canAdd;
   const data = useQuery(api.inventory.list, { search, status, category });
   const addItem = useMutation(api.inventory.add);
   const rapidAudit = useMutation(api.inventory.rapidAudit);

@@ -241,6 +241,9 @@ export default function Girvi() {
                     onClick={() => setDetailFor(l._id)}
                     className="cursor-pointer transition-colors hover:bg-muted/40"
                   >
+                    {/* Row click opens the ledger, but the action buttons inside
+                        must not bubble up into it — otherwise Collect opens the
+                        payment panel and the drawer at the same time. */}
                     <td className="px-5 py-3">
                       <p className="font-mono text-xs font-medium">{l.loanNumber}</p>
                       <p className="text-[11px] text-muted-foreground">
@@ -313,7 +316,10 @@ export default function Girvi() {
                       )}
                     </td>
                     <td className="px-5 py-3 text-right">
-                      <div className="flex justify-end gap-1.5">
+                      <div
+                        className="flex justify-end gap-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                      >
                         <Button
                           size="sm"
                           variant="ghost"

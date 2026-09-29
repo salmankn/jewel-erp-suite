@@ -242,7 +242,9 @@ export const deliver = action({
 export const configured = query({
   args: {},
   handler: async (ctx) => {
-    await requireTenant(ctx, "reports");
+    // Shown next to the outbox, so it must be readable by the same roles —
+    // otherwise the status pill throws for everyone but a Store Owner.
+    await requireTenant(ctx, ["girvi", "pos"]);
     return {
       ready: Boolean(process.env.WHATSAPP_TOKEN && process.env.WHATSAPP_PHONE_NUMBER_ID),
       template: process.env.WHATSAPP_TEMPLATE_NAME ?? "GIRVI_UPDATE",
