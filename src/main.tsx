@@ -12,7 +12,17 @@ import "./index.css";
 // Lazy load route components for better code splitting
 const Landing = lazy(() => import("./pages/Landing.tsx"));
 const AuthPage = lazy(() => import("./pages/Auth.tsx"));
-const Dashboard = lazy(() => import("./pages/Dashboard.tsx"));
+const AppShell = lazy(() => import("./components/app/AppShell").then((m) => ({ default: m.AppShell })));
+const RequireModule = lazy(() =>
+  import("./components/app/AppShell").then((m) => ({ default: m.RequireModule })),
+);
+const Overview = lazy(() => import("./pages/app/Overview.tsx"));
+const Pos = lazy(() => import("./pages/app/Pos.tsx"));
+const Inventory = lazy(() => import("./pages/app/Inventory.tsx"));
+const Girvi = lazy(() => import("./pages/app/Girvi.tsx"));
+const Karigar = lazy(() => import("./pages/app/Karigar.tsx"));
+const Customers = lazy(() => import("./pages/app/Customers.tsx"));
+const Admin = lazy(() => import("./pages/Admin.tsx"));
 const NotFound = lazy(() => import("./pages/NotFound.tsx"));
 
 // Simple loading fallback for route transitions
@@ -122,13 +132,71 @@ createRoot(document.getElementById("root")!).render(
               <Route path="/" element={<Landing />} />
               <Route
                 path="/auth"
-                element={<AuthPage redirectAfterAuth="/dashboard" />}
+                element={<AuthPage redirectAfterAuth="/app" />}
               />
+              {/* Portal 2 — jeweller / tenant workspace, RBAC-scoped. */}
               <Route
-                path="/dashboard"
+                path="/app"
                 element={
-                  <RequireAuth>
-                    <Dashboard />
+                  <RequireAuth
+                    title="Sign in to open your store"
+                    description="Your jeweller workspace holds live stock, Girvi books and GST returns."
+                  >
+                    <AppShell />
+                  </RequireAuth>
+                }
+              >
+                <Route index element={<Overview />} />
+                <Route
+                  path="pos"
+                  element={
+                    <RequireModule module="pos">
+                      <Pos />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="inventory"
+                  element={
+                    <RequireModule module="inventory">
+                      <Inventory />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="girvi"
+                  element={
+                    <RequireModule module="girvi">
+                      <Girvi />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="karigar"
+                  element={
+                    <RequireModule module="karigar">
+                      <Karigar />
+                    </RequireModule>
+                  }
+                />
+                <Route
+                  path="customers"
+                  element={
+                    <RequireModule module="customers">
+                      <Customers />
+                    </RequireModule>
+                  }
+                />
+              </Route>
+              {/* Portal 1 — platform operator console. */}
+              <Route
+                path="/admin"
+                element={
+                  <RequireAuth
+                    title="Sign in to reach the platform console"
+                    description="The Super Admin portal manages tenants, plans and the global rate board."
+                  >
+                    <Admin />
                   </RequireAuth>
                 }
               />
